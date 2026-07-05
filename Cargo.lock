@@ -293,6 +293,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nova_demo"
+version = "0.1.0"
+dependencies = [
+ "nova_ai",
+ "nova_kernel",
+ "nova_memory",
+ "nova_search",
+ "tokio",
+]
+
+[[package]]
 name = "nova_ffi"
 version = "0.1.0"
 dependencies = [

@@ -44,3 +44,6 @@ local-store/
 # --- Coverage & test artifacts ---
 coverage/
 .nyc_output/
+
+# NOVA demo/runtime local data (never committed, stays on the project drive)
+.nova-runtime/

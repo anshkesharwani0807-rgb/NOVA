@@ -1,0 +1,20 @@
+[package]
+name = "nova_demo"
+version = "0.1.0"
+edition = "2021"
+
+# A small, runnable end-to-end smoke test of the NOVA kernel. It boots the kernel,
+# starts a few module skeletons, drives one pub/sub event and one request/response,
+# then prints the config defaults and the user-facing activity + egress trails.
+# This is a developer demo, NOT the product UI (there is no app/screen yet).
+
+[[bin]]
+name = "nova-demo"
+path = "src/main.rs"
+
+[dependencies]
+nova_kernel = { path = "../../src/kernel" }
+nova_memory = { path = "../../modules/memory" }
+nova_search = { path = "../../modules/search" }
+nova_ai = { path = "../../modules/ai" }
+tokio = { workspace = true }

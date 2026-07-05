@@ -9,6 +9,7 @@ members = [
     "modules/comms",
     "modules/plugin_host",
     "api/ffi",
+    "apps/nova-demo",
 ]
 
 [workspace.dependencies]
