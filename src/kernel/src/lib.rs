@@ -9,6 +9,8 @@
 //! Gate and is logged (D3, ADR-0009).
 
 pub mod config;
+pub mod consent;
+pub mod egress;
 pub mod error;
 pub mod event_bus;
 pub mod kernel;
@@ -31,6 +33,14 @@ pub use config::{
 
 // ── Event Bus ─────────────────────────────────────────────────────────────────
 pub use event_bus::{EventBus, EventMetadata, NovaEvent, NovaRequest, NovaResponse};
+
+// ── Consent & Egress (Milestone 2) ────────────────────────────────────────────
+pub use consent::{
+    ConsentGrant, ConsentManager, ConsentResolution, ConsentState, GrantSource, RequestKind,
+};
+pub use egress::{
+    DestinationScope, EgressDecision, EgressGate, EgressOutcome, EgressPolicy, EgressRequest,
+};
 
 // ── Kernel lifecycle ──────────────────────────────────────────────────────────
 pub use kernel::Kernel;

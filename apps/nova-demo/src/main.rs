@@ -11,7 +11,8 @@ use std::sync::Arc;
 
 use nova_ai::AIEngine;
 use nova_kernel::{
-    get_config, get_recent_activity, get_recent_egress, EventMetadata, Kernel, NovaEvent,
+    get_config, get_recent_activity, get_recent_egress, ConsentGrant, EgressPolicy, EgressRequest,
+    EventMetadata, Kernel, NovaEvent, RequestKind,
 };
 use nova_memory::MemoryEngine;
 use nova_search::UniversalSearch;
@@ -117,9 +118,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // 9) Egress Gate (Milestone 2) — every outbound request is validated first.
+    println!("\n[7] Egress Gate (Milestone 2):");
+    println!("    active policy: {:?}", kernel.egress_gate.policy());
+    let outbound = EgressRequest {
+        kind: RequestKind::Ai,
+        destination: "api.example.com".to_string(),
+        purpose: "demo_ai_inference".to_string(),
+        data_size_bytes: 256,
+        origin_module: "DemoShell".to_string(),
+        correlation_id: EventMetadata::new("DemoShell", None).correlation_id,
+    };
+    let d1 = kernel.egress_gate.validate(&outbound);
+    println!(
+        "    AI -> api.example.com  : {:?} — {}",
+        d1.outcome, d1.reason
+    );
+
+    println!("    (user consents + enables the acceleration seam...)");
+    kernel.consent.grant(
+        RequestKind::Ai,
+        "api.example.com",
+        ConsentGrant::AlwaysAllow,
+    );
+    kernel.egress_gate.set_policy(EgressPolicy::InternetAllowed);
+    let mut retry = outbound.clone();
+    retry.correlation_id = EventMetadata::new("DemoShell", None).correlation_id;
+    let d2 = kernel.egress_gate.validate(&retry);
+    println!(
+        "    AI -> api.example.com  : {:?} — {}",
+        d2.outcome, d2.reason
+    );
+
     kernel.shutdown();
     println!("\n========================================");
-    println!(" Demo complete. Foundation works. Features (real search/voice/AI) come next.");
+    println!(" Demo complete. Foundation + Consent/Egress gates work. Features come next.");
     println!("========================================");
     Ok(())
 }

@@ -1,3 +1,5 @@
+use crate::consent::ConsentManager;
+use crate::egress::{EgressGate, EgressPolicy};
 use crate::error::{ErrorCategory, NovaError, Result};
 use crate::event_bus::EventBus;
 use std::path::{Path, PathBuf};
@@ -6,6 +8,10 @@ use std::sync::OnceLock;
 
 pub struct Kernel {
     pub event_bus: Arc<EventBus>,
+    /// Consent Manager — records and evaluates user consent (Milestone 2, D8).
+    pub consent: Arc<ConsentManager>,
+    /// Egress Gate — the single chokepoint for all outbound interactions (Milestone 2, D3).
+    pub egress_gate: Arc<EgressGate>,
     pub config_dir: PathBuf,
     pub log_dir: PathBuf,
 }
@@ -19,13 +25,26 @@ impl Kernel {
         crate::logger::init_logger(log_dir);
 
         // 2. Load Configuration
-        let _config = crate::config::load_config_from_dir(config_dir)?;
+        let config = crate::config::load_config_from_dir(config_dir)?;
 
         // 3. Create Event Bus
         let event_bus = Arc::new(EventBus::new(1024));
 
+        // 4. Create the Consent Manager and Egress Gate (Milestone 2).
+        //    The initial egress policy honours the privacy-first config default: unless
+        //    the user has enabled remote acceleration, the device starts fully offline.
+        let consent = Arc::new(ConsentManager::new());
+        let initial_policy = if config.privacy.allow_remote_acceleration {
+            EgressPolicy::InternetAllowed
+        } else {
+            EgressPolicy::OfflineOnly
+        };
+        let egress_gate = Arc::new(EgressGate::new(consent.clone(), initial_policy));
+
         let kernel = Arc::new(Self {
             event_bus,
+            consent,
+            egress_gate,
             config_dir: config_dir.to_path_buf(),
             log_dir: log_dir.to_path_buf(),
         });
