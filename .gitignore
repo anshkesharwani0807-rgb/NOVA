@@ -1,0 +1,46 @@
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editors / IDEs ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Logs & temp ---
+*.log
+*.tmp
+tmp/
+temp/
+
+# --- Secrets & local config (NEVER commit — see SECURITY.md) ---
+.env
+.env.*
+*.key
+*.pem
+secrets/
+config/local/
+
+# --- Build / dependency artifacts (stack TBD — OQ-2) ---
+# Placeholders; concrete ignores added once the stack is chosen in Ch5/Ch18.
+build/
+dist/
+out/
+node_modules/
+target/
+.gradle/
+*.class
+*.o
+*.obj
+
+# --- Local NOVA user data (on-device-first: user data must never be committed) ---
+*.nova-memory
+user-data/
+local-store/
+
+# --- Coverage & test artifacts ---
+coverage/
+.nyc_output/

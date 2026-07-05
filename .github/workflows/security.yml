@@ -1,0 +1,27 @@
+# NOVA Security checks — PLACEHOLDER
+#
+# Intended for secret scanning, dependency/supply-chain audit, and (once code exists)
+# SAST. For a privacy-first product these are high priority — see SECURITY.md and
+# Chapter 15. Currently inert; replace with real scanners once the stack is chosen.
+
+name: Security (placeholder)
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  schedule:
+    - cron: "17 6 * * 1"  # weekly, off-peak minute
+
+jobs:
+  placeholder:
+    name: Placeholder — no scanners configured yet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Notice
+        run: |
+          echo "NOVA Security placeholder."
+          echo "TODO: secret scanning, dependency audit, SAST (see Chapter 15, Chapter 18)."

@@ -1,0 +1,35 @@
+# Normalize line endings across platforms (Android + Windows dev environments).
+# Text files are stored with LF in the repository; Git handles working-tree conversion.
+
+* text=auto eol=lf
+
+# Explicit text types
+*.md      text eol=lf
+*.txt     text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.json    text eol=lf
+*.sh      text eol=lf
+LICENSE   text eol=lf
+VERSION   text eol=lf
+
+# Windows-specific scripts must keep CRLF if ever added
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# Binary assets — never normalize or diff as text
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.ico     binary
+*.pdf     binary
+*.zip     binary
+*.mp3     binary
+*.mp4     binary
+*.wav     binary
+*.onnx    binary
+*.gguf    binary
+*.bin     binary

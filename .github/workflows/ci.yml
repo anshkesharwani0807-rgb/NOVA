@@ -1,0 +1,28 @@
+# NOVA CI — PLACEHOLDER
+#
+# This workflow is intentionally inert. Concrete CI (build, lint, test) cannot be
+# defined until the technology stack is chosen (OQ-2) and Chapter 18 (Development
+# Standards) and Chapter 19 (Testing, QA & Release) are written.
+#
+# It exists so the pipeline structure is visible from day one. It only performs a
+# trivial no-op check and MUST be replaced before real code lands.
+
+name: CI (placeholder)
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  placeholder:
+    name: Placeholder — no build configured yet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Notice
+        run: |
+          echo "NOVA CI placeholder. No stack chosen yet (OQ-2)."
+          echo "Replace once Chapters 18 and 19 define build, lint, and test."

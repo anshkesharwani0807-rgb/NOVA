@@ -1,0 +1,25 @@
+# NOVA Docs checks — PLACEHOLDER
+#
+# Intended to validate the NOVA Bible and documentation (link checks, frontmatter,
+# chapter-template conformance, versioning rules from Phase 0 section 0.6).
+# Currently inert; replace with real checks as the docs tooling is chosen.
+
+name: Docs (placeholder)
+
+on:
+  push:
+    paths: [ "docs/**", "*.md" ]
+  pull_request:
+    paths: [ "docs/**", "*.md" ]
+
+jobs:
+  placeholder:
+    name: Placeholder — no docs checks configured yet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Notice
+        run: |
+          echo "NOVA Docs placeholder."
+          echo "TODO: validate chapter templates, cross-references, and versioning."
