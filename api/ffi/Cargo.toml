@@ -1,0 +1,21 @@
+[package]
+name = "nova_ffi"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+nova_kernel = { path = "../../src/kernel" }
+nova_memory = { path = "../../modules/memory" }
+nova_search = { path = "../../modules/search" }
+nova_voice = { path = "../../modules/voice" }
+nova_ai = { path = "../../modules/ai" }
+nova_comms = { path = "../../modules/comms" }
+nova_plugin_host = { path = "../../modules/plugin_host" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }

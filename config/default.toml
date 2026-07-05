@@ -1,0 +1,24 @@
+# NOVA Default Configuration
+# All options conform to Chapter 1 Principles
+
+[privacy]
+# Principle 2: Local by default, secure out of the box
+local_by_default = true
+allow_remote_acceleration = false
+telemetry_enabled = false
+allowed_egress_domains = []
+
+[memory]
+# Principle 4: Memory is sacred and owned
+db_path = "local-store/nova.db"
+max_memory_entries = 100000
+auto_pruning = false
+
+[automation]
+# Principle 6: Autonomy dial defaults to conservative
+autonomy_level = "conservative"
+require_consent_for_destructive = true
+
+[system]
+device_tier = "medium"
+log_level = "info"

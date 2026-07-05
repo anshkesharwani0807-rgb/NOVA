@@ -1,0 +1,36 @@
+//! # NOVA Kernel
+//!
+//! The microkernel is the foundational layer of the NOVA AI Operating Platform.
+//! It owns: lifecycle, the internal Event Bus, layered Configuration, structured Logging,
+//! structured Errors, and the two mandatory security gates (Consent Gate + Egress Gate).
+//!
+//! All inter-module communication goes through the Event Bus — modules never call each
+//! other's internals directly (ADR-0004).  All network egress passes through the Egress
+//! Gate and is logged (D3, ADR-0009).
+
+pub mod config;
+pub mod error;
+pub mod event_bus;
+pub mod kernel;
+pub mod logger;
+
+// ── Error handling ────────────────────────────────────────────────────────────
+pub use error::{ErrorCategory, NovaError, Result};
+
+// ── Logging & observability ───────────────────────────────────────────────────
+pub use logger::{
+    get_recent_activity, get_recent_egress, init_logger, log_activity, log_egress, ActivityLog,
+    EgressLog, Redacted,
+};
+
+// ── Configuration ─────────────────────────────────────────────────────────────
+pub use config::{
+    get_config, load_config_from_dir, update_config, AutomationConfig, MemoryConfig, NovaConfig,
+    PrivacyConfig, SystemConfig,
+};
+
+// ── Event Bus ─────────────────────────────────────────────────────────────────
+pub use event_bus::{EventBus, EventMetadata, NovaEvent, NovaRequest, NovaResponse};
+
+// ── Kernel lifecycle ──────────────────────────────────────────────────────────
+pub use kernel::Kernel;

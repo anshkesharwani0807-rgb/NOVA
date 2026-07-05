@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+    "src/kernel",
+    "modules/memory",
+    "modules/search",
+    "modules/voice",
+    "modules/ai",
+    "modules/comms",
+    "modules/plugin_host",
+    "api/ffi",
+]
+
+[workspace.dependencies]
+tokio = { version = "1.38", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+thiserror = "1.0"
+uuid = { version = "1.8", features = ["v4", "serde"] }
+async-trait = "0.1"
+parking_lot = "0.12"
+chrono = { version = "0.4", features = ["serde"] }

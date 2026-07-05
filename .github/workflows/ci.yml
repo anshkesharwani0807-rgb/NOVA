@@ -1,28 +1,43 @@
-# NOVA CI — PLACEHOLDER
-#
-# This workflow is intentionally inert. Concrete CI (build, lint, test) cannot be
-# defined until the technology stack is chosen (OQ-2) and Chapter 18 (Development
-# Standards) and Chapter 19 (Testing, QA & Release) are written.
-#
-# It exists so the pipeline structure is visible from day one. It only performs a
-# trivial no-op check and MUST be replaced before real code lands.
-
-name: CI (placeholder)
+name: NOVA Continuous Integration
 
 on:
   push:
-    branches: [ "**" ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ "**" ]
+    branches: [ main, dev ]
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  placeholder:
-    name: Placeholder — no build configured yet
-    runs-on: ubuntu-latest
+  validate:
+    name: Code Quality & Testing
+    runs-on: windows-latest
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Notice
-        run: |
-          echo "NOVA CI placeholder. No stack chosen yet (OQ-2)."
-          echo "Replace once Chapters 18 and 19 define build, lint, and test."
+    - name: Checkout Codebase
+      uses: actions/checkout@v4
+
+    - name: Setup Rust Toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+
+    - name: Cache Cargo Registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Check Formatting
+      run: cargo fmt --all -- --check
+
+    - name: Run Clippy Linter
+      run: cargo clippy --all-targets -- -D warnings
+
+    - name: Execute Workspace Test Suites
+      run: cargo test --workspace

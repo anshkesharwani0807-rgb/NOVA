@@ -1,0 +1,11 @@
+[package]
+name = "nova_ai"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nova_kernel = { path = "../../src/kernel" }
+tokio = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
