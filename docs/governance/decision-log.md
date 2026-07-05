@@ -34,6 +34,20 @@ each Bible chapter remains the authoritative source for its own decisions.
 | OQ-5 | Autonomy default calibration | Conservative | Ch6/Ch11 |
 | OQ-6 | Linux/macOS timing | Deferred | Ch20 |
 
+## Architecture Decision Records (docs/adr/)
+
+| ID | Decision | Status | Source |
+|---|---|---|---|
+| ADR-0001 | Core in Rust; shared core + C-ABI FFI (resolves OQ-2) | Proposed | docs/adr |
+| ADR-0002 | Shared core + platform-native UI shells (Compose MP fallback) | Proposed | docs/adr |
+| ADR-0003 | Modular monolith / microkernel core; multi-process only where OS-forced | Proposed | docs/adr |
+| ADR-0004 | In-process typed async Event Bus with provenance; sole inter-module channel | Proposed | docs/adr |
+| ADR-0005 | Async runtime for I/O + bounded prioritized compute pool | Proposed | docs/adr |
+| ADR-0006 | Encrypted SQLite-class store (system of record) + embedded HNSW vector index | Proposed | docs/adr |
+| ADR-0007 | NOVA-owned InferenceRuntime interface; pluggable open local backends + consent-gated seam | Proposed | docs/adr |
+| ADR-0008 | Centralized layered typed configuration; private/conservative defaults; no remote layer | Proposed | docs/adr |
+| ADR-0009..0014 | Logging, error handling, DI, plugin sandboxing, key mgmt, build toolchain | Planned | docs/adr |
+
 ## Repository / governance decisions
 
 | ID | Decision | Status | Source |
