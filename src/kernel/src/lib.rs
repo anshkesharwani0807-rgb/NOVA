@@ -15,6 +15,7 @@ pub mod error;
 pub mod event_bus;
 pub mod kernel;
 pub mod logger;
+pub mod module;
 
 // ── Error handling ────────────────────────────────────────────────────────────
 pub use error::{ErrorCategory, NovaError, Result};
@@ -40,6 +41,11 @@ pub use consent::{
 };
 pub use egress::{
     DestinationScope, EgressDecision, EgressGate, EgressOutcome, EgressPolicy, EgressRequest,
+};
+
+// ── Module system (Milestone 3) ───────────────────────────────────────────────
+pub use module::{
+    HealthStatus, KernelModule, LifecycleState, ModuleHealth, ModuleRegistry, ModuleStatus,
 };
 
 // ── Kernel lifecycle ──────────────────────────────────────────────────────────

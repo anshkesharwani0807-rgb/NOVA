@@ -2,6 +2,7 @@ use crate::consent::ConsentManager;
 use crate::egress::{EgressGate, EgressPolicy};
 use crate::error::{ErrorCategory, NovaError, Result};
 use crate::event_bus::EventBus;
+use crate::module::ModuleRegistry;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::OnceLock;
@@ -12,6 +13,8 @@ pub struct Kernel {
     pub consent: Arc<ConsentManager>,
     /// Egress Gate — the single chokepoint for all outbound interactions (Milestone 2, D3).
     pub egress_gate: Arc<EgressGate>,
+    /// Module Registry — kernel-managed module system with lifecycle + DI (Milestone 3).
+    pub registry: Arc<ModuleRegistry>,
     pub config_dir: PathBuf,
     pub log_dir: PathBuf,
 }
@@ -41,10 +44,17 @@ impl Kernel {
         };
         let egress_gate = Arc::new(EgressGate::new(consent.clone(), initial_policy));
 
+        // 5. Create the Module Registry (Milestone 3). Modules are registered by the
+        //    composition root (the app / FFI) after bootstrap, then driven through the
+        //    registry's lifecycle. The kernel crate cannot depend on module crates, so
+        //    it owns the registry but not the concrete modules.
+        let registry = Arc::new(ModuleRegistry::new());
+
         let kernel = Arc::new(Self {
             event_bus,
             consent,
             egress_gate,
+            registry,
             config_dir: config_dir.to_path_buf(),
             log_dir: log_dir.to_path_buf(),
         });

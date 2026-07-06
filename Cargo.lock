@@ -297,9 +297,12 @@ name = "nova_demo"
 version = "0.1.0"
 dependencies = [
  "nova_ai",
+ "nova_comms",
  "nova_kernel",
  "nova_memory",
+ "nova_plugin_host",
  "nova_search",
+ "nova_voice",
  "tokio",
 ]
 

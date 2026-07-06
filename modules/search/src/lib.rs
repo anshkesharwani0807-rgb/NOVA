@@ -1,4 +1,5 @@
-use nova_kernel::{EventMetadata, Kernel, NovaResponse, Result};
+use async_trait::async_trait;
+use nova_kernel::{EventMetadata, Kernel, KernelModule, NovaResponse, Result};
 use std::sync::Arc;
 
 pub struct UniversalSearch {
@@ -9,9 +10,20 @@ impl UniversalSearch {
     pub fn new(kernel: Arc<Kernel>) -> Self {
         Self { kernel }
     }
+}
 
-    /// Initializes and starts the Universal Search request listener
-    pub async fn start(&self) -> Result<()> {
+#[async_trait]
+impl KernelModule for UniversalSearch {
+    fn module_id(&self) -> &'static str {
+        "search"
+    }
+
+    fn version(&self) -> &'static str {
+        env!("CARGO_PKG_VERSION")
+    }
+
+    /// Initializes and starts the Universal Search request listener.
+    async fn start(&self) -> Result<()> {
         let mut rx = self
             .kernel
             .event_bus

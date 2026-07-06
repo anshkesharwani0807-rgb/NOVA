@@ -55,20 +55,29 @@ pub unsafe extern "C" fn nova_init(config_dir_c: *const c_char, log_dir_c: *cons
             std::path::Path::new(log_dir),
         )?;
 
-        // Spin up the modules
-        let memory = MemoryEngine::new(kernel.clone());
-        let search = UniversalSearch::new(kernel.clone());
-        let voice = VoiceSystem::new(kernel.clone());
-        let ai = AIEngine::new(kernel.clone());
-        let comms = DeviceComms::new(kernel.clone());
-        let plugin = PluginHost::new(kernel.clone());
+        // Register every module with the kernel-managed registry (Milestone 3), then
+        // bring them up through the lifecycle manager (initialize -> start) in
+        // dependency order. Modules obtain services only through the kernel.
+        kernel
+            .registry
+            .register(Arc::new(MemoryEngine::new(kernel.clone())))?;
+        kernel
+            .registry
+            .register(Arc::new(UniversalSearch::new(kernel.clone())))?;
+        kernel
+            .registry
+            .register(Arc::new(VoiceSystem::new(kernel.clone())))?;
+        kernel
+            .registry
+            .register(Arc::new(AIEngine::new(kernel.clone())))?;
+        kernel
+            .registry
+            .register(Arc::new(DeviceComms::new(kernel.clone())))?;
+        kernel
+            .registry
+            .register(Arc::new(PluginHost::new(kernel.clone())))?;
 
-        memory.start().await?;
-        search.start().await?;
-        voice.start().await?;
-        ai.start().await?;
-        comms.start().await?;
-        plugin.start().await?;
+        kernel.registry.bring_up().await?;
 
         Ok(())
     });
@@ -132,6 +141,8 @@ pub extern "C" fn nova_shutdown() -> i32 {
     let rt = get_runtime();
     let shutdown_result: Result<()> = rt.block_on(async {
         let kernel = Kernel::instance()?;
+        // Tear down modules in reverse dependency order (stop -> shutdown), then the kernel.
+        kernel.registry.tear_down().await?;
         kernel.shutdown();
         Ok(())
     });

@@ -1,4 +1,5 @@
-use nova_kernel::{EventMetadata, Kernel, NovaResponse, Result};
+use async_trait::async_trait;
+use nova_kernel::{EventMetadata, Kernel, KernelModule, NovaResponse, Result};
 use std::sync::Arc;
 
 pub struct AIEngine {
@@ -9,9 +10,20 @@ impl AIEngine {
     pub fn new(kernel: Arc<Kernel>) -> Self {
         Self { kernel }
     }
+}
 
-    /// Starts the AI Engine request handler for local inference
-    pub async fn start(&self) -> Result<()> {
+#[async_trait]
+impl KernelModule for AIEngine {
+    fn module_id(&self) -> &'static str {
+        "ai"
+    }
+
+    fn version(&self) -> &'static str {
+        env!("CARGO_PKG_VERSION")
+    }
+
+    /// Starts the AI Engine request handler for local inference.
+    async fn start(&self) -> Result<()> {
         let mut rx = self
             .kernel
             .event_bus

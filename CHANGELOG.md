@@ -8,6 +8,17 @@ follow the software-versioning policy defined in Chapter 19 once written.
 ## [Unreleased]
 
 ### Added
+- **Milestone 3 — Module Registry + Dependency Injection + Lifecycle.** A
+  `KernelModule` trait (`module_id`/`version`/`dependencies`/`initialize`/`start`/
+  `stop`/`shutdown`/`health`) and a thread-safe `ModuleRegistry` (register,
+  unregister, lookup, list, health report, topological dependency resolution).
+  Lifecycle states Boot→Initialized→Ready→Running→Stopping→Shutdown, brought up in
+  dependency order and torn down in reverse. Wired into `Kernel::bootstrap` (the
+  kernel owns the registry; the composition root registers modules). All six modules
+  (memory, search, ai, voice, comms, plugin_host) now implement `KernelModule`
+  without behavior change; FFI + demo register and drive them through the registry.
+  6 unit tests + 4 integration tests (registration, duplicate protection, dependency
+  resolution, missing-dep/cycle errors, lifecycle transitions, health, shutdown order).
 - **Milestone 2 — Consent Gate + Egress Gate.** Kernel-level `ConsentManager`
   (Allow Once / Allow for Session / Always Allow / Always Deny) and `EgressGate`
   through which every network/plugin/AI/sync/cloud/external request must pass.

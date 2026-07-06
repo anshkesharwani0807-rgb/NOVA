@@ -1,4 +1,5 @@
-use nova_kernel::{Kernel, Result};
+use async_trait::async_trait;
+use nova_kernel::{Kernel, KernelModule, Result};
 use std::sync::Arc;
 
 pub struct DeviceComms {
@@ -9,9 +10,20 @@ impl DeviceComms {
     pub fn new(kernel: Arc<Kernel>) -> Self {
         Self { kernel }
     }
+}
 
-    /// Initializes and starts device communication services (sync and local P2P channels)
-    pub async fn start(&self) -> Result<()> {
+#[async_trait]
+impl KernelModule for DeviceComms {
+    fn module_id(&self) -> &'static str {
+        "comms"
+    }
+
+    fn version(&self) -> &'static str {
+        env!("CARGO_PKG_VERSION")
+    }
+
+    /// Initializes and starts device communication services (sync and local P2P channels).
+    async fn start(&self) -> Result<()> {
         let event_bus = self.kernel.event_bus.clone();
         let mut rx = event_bus.subscribe();
 

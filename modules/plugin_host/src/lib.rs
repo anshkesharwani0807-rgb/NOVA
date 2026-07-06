@@ -1,4 +1,5 @@
-use nova_kernel::{Kernel, Result};
+use async_trait::async_trait;
+use nova_kernel::{Kernel, KernelModule, Result};
 use std::sync::Arc;
 
 pub struct PluginHost {
@@ -9,9 +10,20 @@ impl PluginHost {
     pub fn new(kernel: Arc<Kernel>) -> Self {
         Self { kernel }
     }
+}
 
-    /// Initializes and starts the plugin runtime and verification services
-    pub async fn start(&self) -> Result<()> {
+#[async_trait]
+impl KernelModule for PluginHost {
+    fn module_id(&self) -> &'static str {
+        "plugin_host"
+    }
+
+    fn version(&self) -> &'static str {
+        env!("CARGO_PKG_VERSION")
+    }
+
+    /// Initializes and starts the plugin runtime and verification services.
+    async fn start(&self) -> Result<()> {
         let event_bus = self.kernel.event_bus.clone();
         let mut rx = event_bus.subscribe();
 

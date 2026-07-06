@@ -10,12 +10,15 @@
 use std::sync::Arc;
 
 use nova_ai::AIEngine;
+use nova_comms::DeviceComms;
 use nova_kernel::{
     get_config, get_recent_activity, get_recent_egress, ConsentGrant, EgressPolicy, EgressRequest,
     EventMetadata, Kernel, NovaEvent, RequestKind,
 };
 use nova_memory::MemoryEngine;
+use nova_plugin_host::PluginHost;
 use nova_search::UniversalSearch;
+use nova_voice::VoiceSystem;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -58,14 +61,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         cfg.automation.autonomy_level
     );
 
-    // 4) Start a few module skeletons (they subscribe / register handlers).
-    println!("\n[2] Starting modules (memory, search, ai)...");
-    let memory = MemoryEngine::new(kernel.clone());
-    let search = UniversalSearch::new(kernel.clone());
-    let ai = AIEngine::new(kernel.clone());
-    memory.start().await?;
-    search.start().await?;
-    ai.start().await?;
+    // 4) Register all modules with the kernel registry and bring them up through the
+    //    lifecycle manager in dependency order (Milestone 3).
+    println!("\n[2] Registering modules + lifecycle (Milestone 3)...");
+    kernel
+        .registry
+        .register(Arc::new(MemoryEngine::new(kernel.clone())))?;
+    kernel
+        .registry
+        .register(Arc::new(UniversalSearch::new(kernel.clone())))?;
+    kernel
+        .registry
+        .register(Arc::new(AIEngine::new(kernel.clone())))?;
+    kernel
+        .registry
+        .register(Arc::new(VoiceSystem::new(kernel.clone())))?;
+    kernel
+        .registry
+        .register(Arc::new(DeviceComms::new(kernel.clone())))?;
+    kernel
+        .registry
+        .register(Arc::new(PluginHost::new(kernel.clone())))?;
+    println!("    registered {} modules", kernel.registry.count());
+    kernel.registry.bring_up().await?;
+    for m in kernel.registry.list() {
+        println!(
+            "    - {:<12} v{:<6} {:?}  health={:?}",
+            m.id, m.version, m.state, m.health.status
+        );
+    }
 
     // 5) Publish a pub/sub event (e.g. a user capturing a note).
     println!("\n[3] Publishing a capture event...");
@@ -150,9 +174,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         d2.outcome, d2.reason
     );
 
+    // 10) Tear down modules in reverse dependency order (Milestone 3), then the kernel.
+    println!("\n[8] Shutting down modules (reverse order)...");
+    kernel.registry.tear_down().await?;
+    for m in kernel.registry.list() {
+        println!("    - {:<12} {:?}", m.id, m.state);
+    }
+
     kernel.shutdown();
     println!("\n========================================");
-    println!(" Demo complete. Foundation + Consent/Egress gates work. Features come next.");
+    println!(" Demo complete. Foundation + gates + module lifecycle work. Features come next.");
     println!("========================================");
     Ok(())
 }
