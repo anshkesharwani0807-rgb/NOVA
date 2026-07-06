@@ -15,7 +15,7 @@ use nova_kernel::{
     get_config, get_recent_activity, get_recent_egress, ConsentGrant, EgressPolicy, EgressRequest,
     EventMetadata, Kernel, NovaEvent, RequestKind,
 };
-use nova_memory::MemoryEngine;
+use nova_memory::{MemoryCategory, MemoryEngine, MemoryRecord, Query, SortBy};
 use nova_plugin_host::PluginHost;
 use nova_search::UniversalSearch;
 use nova_voice::VoiceSystem;
@@ -64,9 +64,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 4) Register all modules with the kernel registry and bring them up through the
     //    lifecycle manager in dependency order (Milestone 3).
     println!("\n[2] Registering modules + lifecycle (Milestone 3)...");
-    kernel
-        .registry
-        .register(Arc::new(MemoryEngine::new(kernel.clone())))?;
+    // Keep a handle to the Memory Engine to demonstrate its API (Milestone 4); register
+    // the same instance so the registry drives its lifecycle (opens the database).
+    let memory = Arc::new(MemoryEngine::new(kernel.clone()));
+    kernel.registry.register(memory.clone())?;
     kernel
         .registry
         .register(Arc::new(UniversalSearch::new(kernel.clone())))?;
@@ -90,6 +91,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             m.id, m.version, m.state, m.health.status
         );
     }
+
+    // 4b) Encrypted Memory Engine (Milestone 4) — persistent, offline, encrypted store.
+    println!("\n[2b] Memory Engine (Milestone 4 — encrypted SQLite):");
+    println!("     db: {}", memory.db_path().display());
+    // Start fresh each run so the demo is deterministic.
+    for r in memory.find(&Query::new().include_deleted(true))? {
+        memory.purge(&r.id)?;
+    }
+    // Store a few memories.
+    let note = MemoryRecord::new(
+        MemoryCategory::Knowledge,
+        "Coast trip",
+        "Sunset photos, 2019",
+    )
+    .with_tags(["photos", "travel"])
+    .with_importance(70);
+    let note_id = note.id.clone();
+    memory.insert(&note)?;
+    memory.insert(
+        &MemoryRecord::new(MemoryCategory::Reminder, "Passport", "Renew before August")
+            .with_tags(["travel"]),
+    )?;
+    println!("     stored {} memories", memory.total()?);
+
+    // Simulate an application restart: close and reopen the database.
+    memory.close();
+    memory.open()?;
+    println!(
+        "     after restart, loaded {} memories from disk",
+        memory.total()?
+    );
+
+    // Search (semantic-free local search over the encrypted store).
+    let hits = memory.search(&Query::new().contains("photos").sort(SortBy::ImportanceDesc))?;
+    println!(
+        "     search 'photos' -> {} hit(s): {:?}",
+        hits.len(),
+        hits.first().map(|r| &r.title)
+    );
+
+    // Update, soft-delete, then restore.
+    let mut updated = memory.find_by_id(&note_id)?.expect("note present");
+    updated.content = "Sunset photos, coast trip, 2019".to_string();
+    memory.update(&updated)?;
+    memory.delete(&note_id)?;
+    println!(
+        "     after soft-delete, active memories = {}",
+        memory.count(&Query::new())?
+    );
+    memory.restore_record(&note_id)?;
+    println!(
+        "     after restore, active memories = {}",
+        memory.count(&Query::new())?
+    );
+
+    // Health report from the module.
+    println!(
+        "     health[memory] = {} records (encrypted at rest)",
+        memory.total()?
+    );
 
     // 5) Publish a pub/sub event (e.g. a user capturing a note).
     println!("\n[3] Publishing a capture event...");

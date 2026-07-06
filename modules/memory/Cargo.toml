@@ -7,5 +7,14 @@ edition = "2021"
 nova_kernel = { path = "../../src/kernel" }
 tokio = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
+parking_lot = { workspace = true }
+uuid = { workspace = true }
+rusqlite = { version = "0.31", features = ["bundled"] }
+aes-gcm = "0.10"
+rand = "0.8"
+
+[dev-dependencies]
+tempfile = "3.10"
