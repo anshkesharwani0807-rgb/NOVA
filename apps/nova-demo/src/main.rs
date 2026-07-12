@@ -165,16 +165,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 6) Drive a request/response through Universal Search (skeleton reply expected).
     println!("\n[4] Sending a search query (skeleton handler)...");
     let smeta = EventMetadata::new("DemoShell", Some("search".to_string()));
-    let query: Arc<String> = Arc::new("birthday photos 2019".to_string());
+    let query = nova_search::SearchQuery::partial("birthday photos 2019").limit(10);
     let response = kernel
         .event_bus
-        .request("search:query", smeta, query)
+        .request("search:query", smeta, Arc::new(query))
         .await?;
     let body = response
         .payload
-        .downcast_ref::<String>()
-        .map(String::as_str)
-        .unwrap_or("<non-text response>");
+        .downcast_ref::<Vec<nova_search::SearchResult>>()
+        .map(|results| format!("{} results", results.len()))
+        .unwrap_or_else(|| "<non-text response>".to_string());
     println!("    search response: {body}");
 
     // Let the spawned async listeners flush their log lines.

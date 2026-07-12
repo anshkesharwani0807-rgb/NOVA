@@ -544,9 +544,15 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "nova_kernel",
+ "nova_memory",
+ "parking_lot",
+ "rusqlite",
  "serde",
+ "serde_json",
+ "tempfile",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

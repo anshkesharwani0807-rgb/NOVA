@@ -1,32 +1,31 @@
-# NOVA Development Roadmap
+﻿# NOVA Development Roadmap
 
 > This roadmap translates the Bible goals (Chapter 2) into a phased, milestone-based
 > engineering plan. Each milestone has a clear objective, exit criteria, and dependency
-> on prior milestones. Milestones are sequential — a later milestone never begins
+> on prior milestones. Milestones are sequential â€” a later milestone never begins
 > without the exit criteria of the previous one being verified.
 
 ---
 
-## Milestone 0 — Foundation (COMPLETE ✓)
+## Milestone 0 â€” Foundation (COMPLETE âœ“)
 
 **Objective:** Establish the canonical specification (NOVA Bible), architecture
 decisions (ADRs), and repository skeleton.
 
 **Deliverables:**
 - NOVA Bible Chapters 0, 1, 2 (complete)
-- ADRs 0001–0010 (proposed)
+- ADRs 0001â€“0010 (proposed)
 - Repository skeleton with all top-level directories
 - Git configuration, CI/CD placeholders
 
-**Exit Criteria:** ✓ Bible chapters reviewed and versioned. ✓ Repository is clean and
+**Exit Criteria:** âœ“ Bible chapters reviewed and versioned. âœ“ Repository is clean and
 committed.
 
 ---
 
-## Milestone 1 — Core Substrate (IN PROGRESS 🔄)
+## Milestone 1 â€” Kernel Foundation (COMPLETE âœ“)
 
-**Objective:** Build the NOVA Microkernel — the foundational layer all modules depend
-on. This milestone produces the first compilable, testable code in the project.
+**Objective:** Build the foundational NOVA Microkernel (nova_kernel).
 
 **Deliverables:**
 - Rust Cargo workspace configured
@@ -36,7 +35,6 @@ on. This milestone produces the first compilable, testable code in the project.
   - Layered configuration system (FR-CORE-002, ADR-0008)
   - Async event bus: pub/sub + request/response (ADR-0004)
   - Kernel lifecycle bootstrap (FR-CORE-001)
-- Module skeleton crates: memory, search, voice, ai, comms, plugin_host
 - FFI boundary crate (`nova_ffi`) exporting C-ABI
 - Integration test suite validating: config, logging, event bus routing
 - CI GitHub Actions workflow
@@ -52,13 +50,48 @@ on. This milestone produces the first compilable, testable code in the project.
 
 ---
 
-## Milestone 2 — Memory Engine (NEXT)
+## Milestone 2 â€” Consent + Egress Gate (COMPLETE âœ“)
+
+**Objective:** Implement the Consent Manager and Egress Gate for privacy-by-default.
+
+**Deliverables:**
+- Consent Manager (Allow Once/Session/Always/Deny)
+- Egress Gate (Offline/LocalNetwork/Internet/Blocked)
+- Policy overrides consent
+- All outbound communication goes through the gate
+- Every decision and egress attempt logged in Activity Trail and Egress Log
+
+**Exit Criteria:**
+- All consent and egress requirements satisfied
+- Egress gate enforced (D3/D8)
+- Decision logging verified
+
+---
+
+## Milestone 3 â€” Module Registry + DI + Lifecycle (COMPLETE âœ“)
+
+**Objective:** Implement the Module Registry and Dependency Injection system.
+
+**Deliverables:**
+- `KernelModule` trait implementation
+- `ModuleRegistry` (register/lookup/list/health/topo-resolve/bring_up/tear_down)
+- Module lifecycle management (initialize, start, stop, shutdown, health)
+- Dependency injection via event bus
+
+**Exit Criteria:**
+- All 6 core modules implement `KernelModule`
+- Module lifecycle and dependency resolution work correctly
+- Module registry is fully functional
+
+---
+
+## Milestone 4 â€” Encrypted Memory Engine (COMPLETE âœ“)
 
 **Objective:** Implement the Memory Engine with a real encrypted local database,
 full CRUD, and user inspection/correction/deletion support.
 
 **Deliverables:**
-- SQLite-based encrypted store (SQLCipher or equivalent) (FR-MEM-001)
+- SQLite-based encrypted store (AES-256-GCM via `aes-gcm` layer) (FR-MEM-001)
 - Memory capture API: text, structured events, file references (FR-MEM-002)
 - Memory inspection, correction, deletion (FR-MEM-003)
 - Provenance: every memory use recorded in activity trail (FR-MEM-004)
@@ -67,12 +100,12 @@ full CRUD, and user inspection/correction/deletion support.
 
 **Exit Criteria:**
 - All FR-MEM-* and FR-EXP-* requirements satisfied with passing tests
-- Export → wipe → import round-trip verified (NFR-REL-005)
+- Export â†’ wipe â†  import round-trip verified (NFR-REL-005)
 - Encryption at rest verified
 
 ---
 
-## Milestone 3 — Universal Search Engine
+## Milestone 5 — Universal Search Engine (COMPLETE ✅)
 
 **Objective:** Implement the Universal Search engine with hybrid semantic + lexical
 retrieval over local indexed content.
@@ -92,7 +125,7 @@ retrieval over local indexed content.
 
 ---
 
-## Milestone 4 — AI Engine & Local Inference
+## Milestone 6 â€” AI Engine & Local Inference (NEXT)
 
 **Objective:** Implement the AI Engine with local LLM and embedding inference,
 uncertainty surfacing, and the consent-gated acceleration seam.
@@ -113,7 +146,7 @@ uncertainty surfacing, and the consent-gated acceleration seam.
 
 ---
 
-## Milestone 5 — Voice System
+## Milestone 7 â€” Voice System (NEXT)
 
 **Objective:** Implement wake-word detection, ASR, and TTS entirely on-device.
 
@@ -130,7 +163,7 @@ uncertainty surfacing, and the consent-gated acceleration seam.
 
 ---
 
-## Milestone 6 — Android Shell
+## Milestone 8 â€” Android Shell (NEXT)
 
 **Objective:** Build the Android (Kotlin/Jetpack Compose) shell that binds to the
 Rust core via JNI over the C-ABI.
@@ -147,7 +180,7 @@ Rust core via JNI over the C-ABI.
 
 ---
 
-## Milestone 7 — Windows Shell
+## Milestone 9 â€” Windows Shell (NEXT)
 
 **Objective:** Build the Windows desktop shell binding to the Rust core.
 
@@ -163,7 +196,7 @@ Rust core via JNI over the C-ABI.
 
 ---
 
-## Milestone 8 — Device Sync & Communication
+## Milestone 10 â€” Device Sync & Communication (NEXT)
 
 **Objective:** Implement opt-in, end-to-end encrypted cross-device sync between Android
 and Windows for the same user.
@@ -180,7 +213,7 @@ and Windows for the same user.
 
 ---
 
-## Milestone 9 — Automation & Plugin System
+## Milestone 11 â€” Automation & Plugin System (NEXT)
 
 **Objective:** Implement the Consent Gate, basic automation actions, and the Plugin
 Host sandbox.
@@ -188,7 +221,7 @@ Host sandbox.
 **Deliverables:**
 - Consequence/Consent Gate with classification ruleset (FR-AUTO-001/002/003)
 - Core automation actions: file management, reminders, app launch
-- Plugin Host sandbox (ADR-0012 — to be written)
+- Plugin Host sandbox (ADR-0012 â€” to be written)
 - Plugin permission system (ADR-0008 integration)
 
 **Exit Criteria:**
@@ -198,7 +231,7 @@ Host sandbox.
 
 ---
 
-## Milestone 10 — Security Hardening, QA & v1.0 Release
+## Milestone 12 â€” Security Hardening, QA & v1.0 Release (NEXT)
 
 **Objective:** Complete security audit, performance profiling, QA, and ship v1.0.
 
@@ -210,7 +243,7 @@ Host sandbox.
 - v1.0 release build for Android and Windows
 
 **Exit Criteria:**
-- All Milestone 1–9 exit criteria verified
+- All Milestone 1â€“11 exit criteria verified
 - All `MUST` NFRs pass automated tests
 - Zero known critical security issues
 
@@ -226,4 +259,4 @@ Host sandbox.
 
 ---
 
-*Roadmap version: 0.1 (pre-v1.0). Updates require milestone completion review.*
+*Roadmap version: 0.2 (post-sync). Updates require milestone completion review.*

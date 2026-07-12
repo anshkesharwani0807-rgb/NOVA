@@ -7,17 +7,19 @@
 //! offline — no cloud, no network.
 
 pub mod crypto;
+pub mod events;
 pub mod record;
 pub mod store;
 
 pub use crypto::{Cipher, FileKeyProvider, InMemoryKeyProvider, KeyProvider};
+pub use events::{MemoryEvent, MemoryEventKind};
 pub use record::{MemoryCategory, MemoryOp, MemoryRecord, Query, SearchMode, SortBy};
 pub use store::{Store, SCHEMA_VERSION};
 
 use async_trait::async_trait;
 use nova_kernel::{
-    get_config, log_activity, ErrorCategory, HealthStatus, Kernel, KernelModule, ModuleHealth,
-    NovaError, Result,
+    get_config, log_activity, ErrorCategory, EventBus, EventMetadata, HealthStatus, Kernel,
+    KernelModule, ModuleHealth, NovaError, NovaEvent, Result,
 };
 use parking_lot::Mutex;
 use std::path::{Path, PathBuf};
@@ -41,6 +43,9 @@ pub struct MemoryEngine {
     db_path: PathBuf,
     key_path: PathBuf,
     inner: Mutex<Option<Store>>,
+    /// Event bus for publishing memory-change events (None when constructed without a
+    /// kernel, e.g. in unit tests). Publishing is a no-op in that case.
+    event_bus: Option<Arc<EventBus>>,
 }
 
 impl MemoryEngine {
@@ -55,7 +60,9 @@ impl MemoryEngine {
             .unwrap_or_else(|| kernel.config_dir.clone());
         let db_path = base.join(&cfg.memory.db_path);
         let key_path = db_path.with_extension("key");
-        Self::with_paths(db_path, key_path)
+        let mut engine = Self::with_paths(db_path, key_path);
+        engine.event_bus = Some(kernel.event_bus.clone());
+        engine
     }
 
     /// Construct with explicit database and key-file paths (used by the demo and tests).
@@ -64,6 +71,21 @@ impl MemoryEngine {
             db_path: db_path.into(),
             key_path: key_path.into(),
             inner: Mutex::new(None),
+            event_bus: None,
+        }
+    }
+
+    /// Publish a memory-change event (no-op if there is no event bus).
+    fn publish(&self, kind: MemoryEventKind, record_id: &str, record: Option<MemoryRecord>) {
+        if let Some(bus) = &self.event_bus {
+            let event = MemoryEvent {
+                kind,
+                record_id: record_id.to_string(),
+                record,
+            };
+            let metadata = EventMetadata::new("memory", Some(event.action().to_string()));
+            let payload: Arc<dyn std::any::Any + Send + Sync> = Arc::new(event);
+            let _ = bus.publish(NovaEvent { metadata, payload });
         }
     }
 
@@ -106,26 +128,38 @@ impl MemoryEngine {
     }
 
     pub fn insert(&self, rec: &MemoryRecord) -> Result<()> {
-        self.with_store(|s| s.insert(rec))
+        self.with_store(|s| s.insert(rec))?;
+        self.publish(MemoryEventKind::Created, &rec.id, Some(rec.clone()));
+        Ok(())
     }
 
     pub fn update(&self, rec: &MemoryRecord) -> Result<()> {
-        self.with_store(|s| s.update(rec))
+        self.with_store(|s| s.update(rec))?;
+        self.publish(MemoryEventKind::Updated, &rec.id, Some(rec.clone()));
+        Ok(())
     }
 
     /// Soft-delete (recoverable).
     pub fn delete(&self, id: &str) -> Result<()> {
-        self.with_store(|s| s.soft_delete(id))
+        self.with_store(|s| s.soft_delete(id))?;
+        self.publish(MemoryEventKind::Deleted, id, None);
+        Ok(())
     }
 
     /// Restore a soft-deleted record.
     pub fn restore_record(&self, id: &str) -> Result<()> {
-        self.with_store(|s| s.restore(id))
+        self.with_store(|s| s.restore(id))?;
+        // Re-publish as an update so subscribers re-index the now-active record.
+        let record = self.find_by_id(id)?;
+        self.publish(MemoryEventKind::Updated, id, record);
+        Ok(())
     }
 
     /// Permanently remove a single record.
     pub fn purge(&self, id: &str) -> Result<()> {
-        self.with_store(|s| s.purge(id))
+        self.with_store(|s| s.purge(id))?;
+        self.publish(MemoryEventKind::Deleted, id, None);
+        Ok(())
     }
 
     /// Permanently remove all soft-deleted records.
