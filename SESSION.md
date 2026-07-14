@@ -383,3 +383,60 @@ cargo run -p nova_demo                              ✅ (automation section [7c]
 - `roadmap/ROADMAP.md` (M12 updated with new deliverables)
 - `AI_CONTEXT.md` (updated to M12 automation crate)
 - `SESSION.md` (this section)
+
+---
+
+# M13 Final — Plugin SDK & Extension Platform (COMPLETE) — session update 2026-07-14
+
+## Context
+M13 builds a complete plugin SDK (`nova_plugin_sdk`) as a standalone crate, providing
+a permission-gated, sandboxed, event-driven extension platform. Plugins implement the
+`Plugin` trait and receive `PluginContext` — no direct kernel/module access.
+
+## What was built (12 source files in `modules/plugin_sdk/`)
+### SDK components
+- `manifest.rs` — `PluginManifest` with id, name, version, permissions, capabilities, deps, validation
+- `permissions.rs` — `PluginPermissionManager`: declare, grant, revoke, check per-plugin permissions
+- `sandbox.rs` — `PluginSandbox`: action validation, storage isolation, network gating
+- `plugin.rs` — `Plugin` trait with full lifecycle callbacks
+- `context.rs` — `PluginContext`: isolated storage, permission checks, config map, logger
+- `registry.rs` — `PluginRegistry`: CRUD with `PluginState` tracking
+- `lifecycle.rs` — `PluginLifecycleManager`: install → enable → disable → unload → uninstall
+- `loader.rs` — `PluginLoader`: register, unload, hot-reload, dependency resolution
+- `storage.rs` — `PluginStorage`: in-memory and disk-based per-plugin isolation
+- `events.rs` — `PluginEventPayload`: 9 event variants published on the event bus
+- `manager.rs` — `PluginManager`: high-level facade coordinating all sub-components
+- `error.rs` — `PluginResult<T>` type alias using NovaError with Plugin category
+
+### Tests (60 total)
+- **49 unit tests** — all sub-modules: manifest, permissions, sandbox, plugin, context, registry,
+  lifecycle, loader, storage, events, manager
+- **11 integration tests** — plugin registration + lifecycle, sandbox enforcement, context + storage,
+  event bus integration, permission edge cases, storage isolation, loader dependency resolution,
+  sandbox cross-plugin isolation, registry edge cases, lifecycle manager direct
+
+### Demo extension
+- `apps/nova-demo/src/main.rs` — step `[7d]` with 3 sample plugins:
+  - `HelloPlugin` — basic install/enable/disable/uninstall lifecycle
+  - `MemoryPlugin` — permission-gated (`memory.read`, `memory.write`), sandbox enforcement
+  - `AutomationPlugin` — automation permissions with storage isolation
+  - Shows: installation, enable/disable, permission check, sandbox block, storage isolation,
+    event bus events, health check, uninstall
+
+## Verification (all 4 gates green)
+```
+cargo fmt --all -- --check                          ✅
+cargo clippy --workspace --all-targets -- -D warnings ✅ (0)
+cargo test --workspace                               ✅ (nova_plugin_sdk: 49 unit + 11 integration = 60 tests)
+cargo run -p nova_demo                              ✅ (plugin SDK section [7d] works)
+```
+
+## Modified Files
+- `modules/plugin_sdk/` (12 new source files + 1 integration test file)
+- `apps/nova-demo/Cargo.toml` (added nova_plugin_sdk dep + async-trait)
+- `apps/nova-demo/src/main.rs` (added step [7d] plugin SDK demo + 3 sample plugins)
+- `Cargo.toml` (added modules/plugin_sdk to workspace)
+- `roadmap/ROADMAP.md` (M13 added with new deliverables)
+- `AI_CONTEXT.md` (updated to M13 plugin_sdk crate + invariants)
+- `CHANGELOG.md` (v0.16.0 entry)
+- `SESSION.md` (this section)

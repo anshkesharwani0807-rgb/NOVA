@@ -1,60 +1,55 @@
 # CHANGELOG
 
-## [0.15.0] - 2026-07-14 — Automation Engine
+## [0.16.0] - 2026-07-14 — Plugin SDK & Extension Platform
+
+### Added
+- **`nova_plugin_sdk` crate** (`modules/plugin_sdk/`) — full plugin extension platform:
+  - `PluginManifest` — plugin_id, name, version, author, description, required_permissions,
+    capabilities, dependencies, min/max NOVA version with validation
+  - `Plugin` trait — async lifecycle callbacks (on_install/enable/disable/update/reload/unload, health)
+  - `PluginRegistry` — CRUD with state tracking (Installed/Enabled/Disabled/Unloaded/Error)
+  - `PluginPermissionManager` — declare, grant, revoke, check permissions per plugin
+  - `PluginSandbox` — action validation, storage isolation, network gating
+  - `PluginLifecycleManager` — full state machine with event bus publishing
+  - `PluginLoader` — register, unload, hot-reload, dependency resolution
+  - `PluginContext` — per-plugin context with isolated storage, permission checks, config, logger
+  - `PluginStorage` — in-memory and disk-based per-plugin data/config/cache isolation
+  - `PluginEventPayload` — 9 event variants on the event bus
+  - `PluginManager` — high-level facade coordinating all sub-components
+- **Comprehensive test suite:** 49 unit tests + 11 integration tests = 60 total
+- **Demo extension** (`apps/nova-demo`): step `[7d]` with HelloPlugin, MemoryPlugin,
+  AutomationPlugin — lifecycle, permissions, sandbox, storage, event bus
+
+### Build
+- Updated workspace members: `modules/plugin_sdk` added
+- Updated `apps/nova-demo/Cargo.toml` with `nova_plugin_sdk` dependency
+- All 4 verification gates green across the entire workspace
+
+---
+
+## [0.15.0] - 2026-07-14 — Automation Engine + Knowledge & Memory Intelligence
 
 ### Added
 - **Dedicated `nova_automation` crate** (`modules/automation/`) with full workflow orchestration:
   - `Workflow`, `WorkflowStep`, `TriggerConfig`, `WorkflowSummary` — domain model with validation
   - `WorkflowRegistry` — CRUD + enable/disable + find_by_trigger
-  - `ActionType` — 14 action variants (Speak, Notify, OpenApp, LaunchActivity, Clipboard,
-    CreateMemory, SearchMemory, RunAI, CaptureVoice, AnalyzeImage, DeviceControl,
-    PluginInvocation, Wait, SubWorkflow)
-  - `Condition` — 12 condition variants (And, Or, Not, Comparison, Regex, Contains, Numeric,
-    DateCompare, PermissionCheck, ContextCheck, True, False)
-  - `TriggerType` — 13 trigger variants (Time, Date, Battery, Charging, WiFi, Bluetooth,
-    DeviceState, Memory, Voice, Vision, Manual, EventBus, Plugin)
-  - `Scheduler` — time-based trigger checking with `get_next_scheduled`
-  - `ExecutionEngine` — sequential/parallel execution, retry, cancellation, step outcomes
-  - `HistoryStore` trait + `InMemoryHistory` — execution history tracking
-  - `AutomationEventPayload` — 10 event variants published on the event bus
+  - `ActionType` — 14 action variants
+  - `Condition` — 12 condition variants
+  - `TriggerType` — 13 trigger variants
+  - `Scheduler` — time-based trigger checking
+  - `ExecutionEngine` — sequential/parallel execution, retry, cancellation
+  - `HistoryStore` trait + `InMemoryHistory`
+  - `AutomationEventPayload` — 10 event variants on the event bus
   - `KernelModule` lifecycle integration (`AutomationEngine`)
-- **Comprehensive test suite:** 56 unit tests + 36 integration tests = 92 total
-- **Demo extension** (`apps/nova-demo`): step `[7c]` demonstrates workflow creation,
-  manual trigger, execution history, scheduler, and event bus capture
+  - 56 unit tests + 36 integration tests = 92 total
+- **Knowledge & Memory Intelligence:** `nova_knowledge` crate with `KnowledgeEngine`,
+  `MemoryAnalyzer`, `KnowledgeGraph`, `RelationshipEngine`, `TimelineGenerator`,
+  `SmartRecall`, `SummaryEngine` — 9 event variants on the event bus
+- Demo extensions for both automation ([7c]) and knowledge ([4d])
 
 ### Build
-- Updated workspace members: `modules/automation` added
-- Updated `apps/nova-demo/Cargo.toml` with `nova_automation` dependency
+- Updated workspace members: `modules/automation`, `modules/knowledge`
 - All 4 verification gates green across the entire workspace
-
-### Added
-- **Knowledge & Memory Intelligence (`modules/knowledge`):** `nova_knowledge` crate with
-  `KnowledgeEngine` — evolves NOVA from storing memories into understanding, organizing, and
-  reasoning over them. Offline-first, privacy-first, event-driven.
-- **`MemoryAnalyzer`:** automatic categorization (9 categories), importance scoring,
-  tag extraction, named entity extraction (Person/Place/Project/Document/Conversation/
-  Task/Idea/Technology), Jaccard-based duplicate detection, content link suggestions.
-- **`KnowledgeGraph`:** entity/relationship store with adjacency tracking, upsert/search/
-  get_connected, `find_entity_by_name`, entity/relationship counts, type-filtered query.
-- **`RelationshipEngine`:** 6 known relationship patterns (works_on, had_idea, uses,
-  assigned, visited, documents) detected between extracted entities.
-- **`TimelineGenerator`:** daily/weekly/monthly/project/conversation timeline generation
-  with entry count limiting and sorted chronology.
-- **`SmartRecall`:** contextual memory retrieval wrapping `UniversalSearch` with time range
-  and category/tag filtering; convenience methods for text recall, last-week, by-category.
-- **`SummaryEngine`:** deterministic offline summary generation (conversation/project/daily/
-  cluster) with key point extraction, category counting, and content truncation.
-- **Event bus integration:** 9 `KnowledgeEventPayload` variants published on memory analysis,
-  linking, entity/relationship creation, timeline generation, summary creation, and recall.
-  Logged to Activity Trail.
-- **Knowledge engine demo (`apps/nova-demo`):** Memory analysis, timeline generation, graph
-  inspection, and summary generation demonstrated end-to-end.
-
-### Build
-- Updated workspace members: `modules/knowledge` added
-- All 4 verification gates green across the entire workspace
-- 0 clippy warnings, 0 fmt errors, all 155+ tests pass
-- All M1–M14 exit criteria verified
 
 ---
 

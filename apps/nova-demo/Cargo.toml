@@ -21,6 +21,8 @@ nova_voice = { path = "../../modules/voice" }
 nova_comms = { path = "../../modules/comms" }
 nova_vision = { path = "../../modules/vision" }
 nova_plugin_host = { path = "../../modules/plugin_host" }
+nova_plugin_sdk = { path = "../../modules/plugin_sdk" }
 nova_knowledge = { path = "../../modules/knowledge" }
 nova_automation = { path = "../../modules/automation" }
 tokio = { workspace = true }
+async-trait = { workspace = true }

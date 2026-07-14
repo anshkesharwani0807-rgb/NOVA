@@ -3536,6 +3536,7 @@ dependencies = [
 name = "nova_demo"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "nova_ai",
  "nova_automation",
  "nova_comms",
@@ -3543,6 +3544,7 @@ dependencies = [
  "nova_knowledge",
  "nova_memory",
  "nova_plugin_host",
+ "nova_plugin_sdk",
  "nova_search",
  "nova_vision",
  "nova_voice",
@@ -3681,6 +3683,23 @@ dependencies = [
  "serde",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "nova_plugin_sdk"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "nova_kernel",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

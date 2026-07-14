@@ -12,6 +12,7 @@ members = [
     "modules/sync",
     "modules/knowledge",
     "modules/automation",
+    "modules/plugin_sdk",
     "modules/plugin_host",
     "api/ffi",
     "api/jni",

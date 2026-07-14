@@ -345,6 +345,45 @@ reasoning over them — offline-first, privacy-first, event-driven, modular.
 
 ---
 
+## Milestone 13 — Plugin SDK & Extension Platform (COMPLETE)
+
+**Objective:** Make NOVA extensible without modifying core modules — plugin lifecycle,
+permission-gated sandbox, isolated storage, and event bus integration.
+
+**Deliverables:**
+- `nova_plugin_sdk` crate with 11 source files
+- `PluginManifest` — plugin_id, name, version, author, description, required_permissions,
+  capabilities, dependencies, min/max NOVA version with validation
+- `Plugin` trait — lifecycle callbacks: on_install, on_enable, on_disable, on_update,
+  on_reload, on_unload, health
+- `PluginRegistry` — CRUD for installed plugins with state tracking (Installed/Enabled/
+  Disabled/Unloaded/Error)
+- `PluginPermissionManager` — declare + grant + revoke + check permissions per plugin
+- `PluginSandbox` — validates actions against granted permissions, blocks storage access
+  outside plugin directory, blocks network without `internet.access` permission
+- `PluginLifecycleManager` — install/enable/disable/update/reload/unload/uninstall with
+  full state transitions
+- `PluginLoader` — register/unload/hot-reload + dependency resolution
+- `PluginContext` — per-plugin context with isolated storage + permission checks + config + logging
+- `PluginStorage` — in-memory and disk-based per-plugin data/config/cache isolation
+- `PluginEventPayload` — 9 event variants on event bus (Installed/Enabled/Disabled/Updated/
+  Removed/Crashed/PermissionDenied/Loaded/Unloaded)
+- `PluginManager` — high-level facade coordinating all sub-components
+- 49 unit tests + 11 integration tests = 60 tests total
+- Demo extension with HelloPlugin, MemoryPlugin (permission-gated), AutomationPlugin,
+  lifecycle transitions, storage isolation, sandbox enforcement, event bus verification
+- All 4 verification gates green
+
+**Exit Criteria:**
+- `cargo fmt --check` — clean
+- `cargo clippy -D warnings` — zero warnings
+- `cargo test --workspace` — all pass (nova_plugin_sdk: 49 unit + 11 integration)
+- `cargo run -p nova_demo` — [7d] demo section runs with plugin lifecycle, permissions,
+  storage, sandbox, and event bus
+- No M1-M12 regressions
+
+---
+
 ## Future Phases (Post-v1.0)
 
 - **v3.x:** Proactive helpfulness (anticipation engine, LG-2)

@@ -19,8 +19,63 @@ use nova_kernel::{
 use nova_knowledge::KnowledgeEngine;
 use nova_memory::{MemoryCategory, MemoryEngine, MemoryRecord, Query, SortBy};
 use nova_plugin_host::PluginHost;
+use nova_plugin_sdk::{Plugin, PluginContext, PluginManager, PluginManifest};
 use nova_search::UniversalSearch;
 use nova_voice::VoiceSystem;
+
+// ── Sample plugins for M13 Plugin SDK Demo ──────────────────────────────────
+use async_trait::async_trait;
+
+struct HelloPlugin {
+    manifest: PluginManifest,
+}
+
+#[async_trait]
+impl Plugin for HelloPlugin {
+    fn manifest(&self) -> &PluginManifest {
+        &self.manifest
+    }
+
+    async fn on_enable(&self, ctx: &PluginContext) -> nova_kernel::Result<()> {
+        ctx.log("HelloPlugin enabled — Hello from plugin system!");
+        Ok(())
+    }
+}
+
+struct MemoryPlugin {
+    manifest: PluginManifest,
+}
+
+#[async_trait]
+impl Plugin for MemoryPlugin {
+    fn manifest(&self) -> &PluginManifest {
+        &self.manifest
+    }
+
+    async fn on_enable(&self, ctx: &PluginContext) -> nova_kernel::Result<()> {
+        ctx.storage.store("last_access", "enabled");
+        ctx.log("MemoryPlugin enabled — can read memories");
+        Ok(())
+    }
+}
+
+struct AutomationPlugin {
+    manifest: PluginManifest,
+}
+
+#[async_trait]
+impl Plugin for AutomationPlugin {
+    fn manifest(&self) -> &PluginManifest {
+        &self.manifest
+    }
+
+    async fn on_enable(&self, ctx: &PluginContext) -> nova_kernel::Result<()> {
+        ctx.storage.store("trigger_count", "0");
+        ctx.log("AutomationPlugin enabled — can execute workflows");
+        Ok(())
+    }
+}
+// ── End sample plugins ──────────────────────────────────────────────────────
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -461,6 +516,101 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Clean up the execution state.
     let _ = engine.cancel_execution(&execution_id);
 
+    // 7d) Plugin SDK (Milestone 13 — plugin lifecycle, permissions, sandbox, storage, events).
+    println!("\n[7d] Plugin SDK (Milestone 13 — plugins + permissions + sandbox + storage):");
+    let plugin_mgr = PluginManager::new(Some(kernel.event_bus.clone()));
+
+    // Register HelloPlugin.
+    let hello = Arc::new(HelloPlugin {
+        manifest: PluginManifest::new(
+            "hello",
+            "Hello Plugin",
+            "1.0.0",
+            "NOVA",
+            "A friendly plugin",
+        ),
+    });
+    plugin_mgr.register_plugin(hello).unwrap();
+    plugin_mgr.install_plugin("hello").await.unwrap();
+    plugin_mgr.enable_plugin("hello").await.unwrap();
+    println!(
+        "     hello plugin  : installed, enabled, health={}",
+        plugin_mgr.check_health("hello").unwrap()
+    );
+
+    // Register MemoryPlugin with memory permissions.
+    let mem = Arc::new(MemoryPlugin {
+        manifest: PluginManifest::new(
+            "memory_reader",
+            "Memory Reader",
+            "1.0.0",
+            "NOVA",
+            "Reads memories",
+        )
+        .with_permissions(&["memory.read", "memory.write"]),
+    });
+    plugin_mgr.register_plugin(mem).unwrap();
+    plugin_mgr.install_plugin("memory_reader").await.unwrap();
+    plugin_mgr.enable_plugin("memory_reader").await.unwrap();
+    // Check permission enforcement.
+    let perm_ok = plugin_mgr
+        .check_action("memory_reader", "read", "memory.read")
+        .is_ok();
+    let perm_denied = plugin_mgr
+        .check_action("memory_reader", "network", "internet.access")
+        .is_err();
+    println!(
+        "     memory plugin  : permitted(memory.read)={}, blocked(internet.access)={}",
+        perm_ok, perm_denied
+    );
+
+    // Register AutomationPlugin with automation permissions.
+    let auto = Arc::new(AutomationPlugin {
+        manifest: PluginManifest::new(
+            "auto_worker",
+            "Automation Worker",
+            "1.0.0",
+            "NOVA",
+            "Runs workflows",
+        )
+        .with_permissions(&["automation.execute", "memory.read"]),
+    });
+    plugin_mgr.register_plugin(auto).unwrap();
+    plugin_mgr.install_plugin("auto_worker").await.unwrap();
+    plugin_mgr.enable_plugin("auto_worker").await.unwrap();
+    println!("     auto plugin    : installed, enabled");
+
+    // Demonstrate plugin storage isolation.
+    let ctx_hello = plugin_mgr.create_context("hello").unwrap();
+    ctx_hello.storage.store("my_key", "hello_value");
+    let ctx_mem = plugin_mgr.create_context("memory_reader").unwrap();
+    ctx_mem.storage.store("my_key", "mem_value");
+    println!(
+        "     storage        : hello='{}', memory='{}'",
+        ctx_hello.storage.retrieve("my_key").unwrap_or_default(),
+        ctx_mem.storage.retrieve("my_key").unwrap_or_default()
+    );
+
+    // Demonstrate disable + reload lifecycle.
+    plugin_mgr.disable_plugin("hello").await.unwrap();
+    println!("     hello          : disabled");
+    plugin_mgr.enable_plugin("hello").await.unwrap();
+    println!("     hello          : re-enabled");
+
+    // Demonstrate uninstall.
+    plugin_mgr.uninstall_plugin("hello").await.unwrap();
+    println!(
+        "     hello          : uninstalled ({}/{} plugins remain)",
+        plugin_mgr.list_plugins().len(),
+        2
+    );
+
+    // Demonstrate sandbox enforcement.
+    let sandbox = plugin_mgr.check_action("memory_reader", "write", "memory.write");
+    println!("     sandbox        : memory.write={:?}", sandbox.is_ok());
+    let network = plugin_mgr.check_network("memory_reader");
+    println!("     network        : blocked={:?}", network.is_err());
+
     // 10) Tear down modules in reverse dependency order (Milestone 3), then the kernel.
     println!("\n[8] Shutting down modules (reverse order)...");
     kernel.registry.tear_down().await?;
@@ -470,7 +620,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     kernel.shutdown();
     println!("\n========================================");
-    println!(" Demo complete. Foundation + gates + module lifecycle + offline AI + automation workflows work.");
+    println!(" Demo complete. Foundation + gates + module lifecycle + offline AI + automation + plugin SDK work.");
     println!("========================================");
     Ok(())
 }
