@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use crate::caption::{CaptionEngine, CaptionOptions, CaptionResult};
 use crate::color::{ColorAnalyzer, ColorResult};
+use crate::context_builder::{VisionContext, VisionContextBuilder};
 use crate::decoder::ImageDecoder;
 use crate::detection::{DetectionResult, ObjectDetector};
 use crate::embedding::{ImageEmbedding, VisionEmbedder};
@@ -12,9 +13,11 @@ use crate::hashing::{ImageHash, ImageHasher};
 use crate::image_loader::ImageLoader;
 use crate::metadata::MetadataReader;
 use crate::ocr::{OcrEngine, OcrOptions, OcrResult};
+use crate::preprocessor::{ImagePreprocessor, PreprocessedImage, ResizeMode};
 use crate::providers::VisionProvider;
 use crate::quality::QualityAnalyzer;
 use crate::scene::{SceneClassifier, SceneResult};
+use crate::screenshot::{ScreenshotAnalysis, ScreenshotAnalyzer};
 use crate::tags::{TagsResult, VisualTagger};
 use crate::thumbnail::ThumbnailGenerator;
 
@@ -34,6 +37,9 @@ pub struct VisionEngine {
     pub color: Arc<dyn ColorAnalyzer>,
     pub tagger: Arc<dyn VisualTagger>,
     pub provider: Arc<dyn VisionProvider>,
+    pub screenshot: Arc<dyn ScreenshotAnalyzer>,
+    pub context_builder: Arc<VisionContextBuilder>,
+    pub preprocessor: Arc<ImagePreprocessor>,
 }
 
 impl VisionEngine {
@@ -59,6 +65,10 @@ impl VisionEngine {
             Arc::new(crate::quality::MockQualityAnalyzer::new()) as Arc<dyn QualityAnalyzer>;
         let color = Arc::new(crate::color::MockColorAnalyzer::new()) as Arc<dyn ColorAnalyzer>;
         let tagger = Arc::new(crate::tags::MockVisualTagger::new()) as Arc<dyn VisualTagger>;
+        let screenshot = Arc::new(crate::screenshot::MockScreenshotAnalyzer::new())
+            as Arc<dyn ScreenshotAnalyzer>;
+        let context_builder = Arc::new(VisionContextBuilder::new(None));
+        let preprocessor = Arc::new(ImagePreprocessor::new());
 
         Self {
             loader,
@@ -76,6 +86,9 @@ impl VisionEngine {
             color,
             tagger,
             provider,
+            screenshot,
+            context_builder,
+            preprocessor,
         }
     }
 
@@ -182,6 +195,34 @@ impl VisionEngine {
         let h_a = self.hash_image(bytes_a).await?;
         let h_b = self.hash_image(bytes_b).await?;
         Ok(h_a.is_similar(&h_b))
+    }
+
+    pub async fn analyze_screenshot(&self, bytes: &[u8]) -> Result<ScreenshotAnalysis> {
+        self.screenshot.analyze_screenshot(bytes).await
+    }
+
+    pub async fn build_vision_context(
+        &self,
+        image_bytes: &[u8],
+        screenshot_bytes: Option<&[u8]>,
+    ) -> VisionContext {
+        self.context_builder
+            .build_context(image_bytes, screenshot_bytes)
+            .await
+    }
+
+    pub fn preprocess_image(
+        &self,
+        bytes: &[u8],
+        target_w: u32,
+        target_h: u32,
+        mode: ResizeMode,
+    ) -> Result<PreprocessedImage> {
+        self.preprocessor.resize(bytes, target_w, target_h, mode)
+    }
+
+    pub fn normalize_pixels(bytes: &[u8]) -> Vec<f32> {
+        ImagePreprocessor::normalize_to_range(bytes, crate::preprocessor::Normalization::ZeroToOne)
     }
 }
 

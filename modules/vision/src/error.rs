@@ -10,6 +10,10 @@ pub enum VisionErrorCategory {
     Cache,
     Provider,
     Unsupported,
+    Screenshot,
+    Preprocessor,
+    Context,
+    Metadata,
 }
 
 impl VisionErrorCategory {
@@ -23,6 +27,10 @@ impl VisionErrorCategory {
             VisionErrorCategory::Cache => "ERR_VISION_CACHE",
             VisionErrorCategory::Provider => "ERR_VISION_PROVIDER",
             VisionErrorCategory::Unsupported => "ERR_VISION_UNSUPPORTED",
+            VisionErrorCategory::Screenshot => "ERR_VISION_SCREENSHOT",
+            VisionErrorCategory::Preprocessor => "ERR_VISION_PREPROCESSOR",
+            VisionErrorCategory::Context => "ERR_VISION_CONTEXT",
+            VisionErrorCategory::Metadata => "ERR_VISION_METADATA",
         }
     }
 }

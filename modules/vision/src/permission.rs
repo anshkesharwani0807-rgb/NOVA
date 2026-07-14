@@ -11,6 +11,12 @@ pub enum VisionCapability {
     CameraFrame,
     FaceRecognition,
     VisualSearch,
+    Ocr,
+    Metadata,
+    Embedding,
+    Cache,
+    GpsRead,
+    Screenshot,
 }
 
 impl VisionCapability {
@@ -23,6 +29,12 @@ impl VisionCapability {
             VisionCapability::CameraFrame => "vision_camera_frame",
             VisionCapability::FaceRecognition => "vision_face_recognition",
             VisionCapability::VisualSearch => "vision_visual_search",
+            VisionCapability::Ocr => "vision_ocr",
+            VisionCapability::Metadata => "vision_metadata",
+            VisionCapability::Embedding => "vision_embedding",
+            VisionCapability::Cache => "vision_cache",
+            VisionCapability::GpsRead => "vision_gps_read",
+            VisionCapability::Screenshot => "vision_screenshot",
         }
     }
 }

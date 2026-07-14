@@ -1,3 +1,50 @@
+# Session Summary - 2026-07-14 (M14 Vision Engine Finalization)
+
+## Agent
+**Kiro** (AI-powered development assistant)
+
+## Progress Made
+
+### M14 — Vision Engine Finalization (COMPLETE)
+
+**Completed the NOVA Vision Engine** — the perception layer that allows NOVA to understand visual information.
+
+### What was finalized/completed:
+- **ScreenshotAnalyzer trait + MockScreenshotAnalyzer** — UI element detection (24 UI element types: buttons, dialogs, text blocks, forms, nav bars, error dialogs, permission dialogs, etc.). Deterministic mock returns realistic UI hierarchy for offline testing.
+- **VisionContext + VisionContextBuilder** — constructs AI Runtime-compatible `VisionContext` from `AnalysisResult`, metadata, and screenshot data. `to_prompt_context()` generates human-readable AI prompt context. `from_analysis()` and `from_screenshot()` factory methods.
+- **ImagePreprocessor** — 5 resize modes (Fit/Fill/Crop/Pad/Exact), 4 normalization modes (None/ZeroToOne/MinusOneToOne/Imagenet), `to_rgba()`, `to_grayscale()`, `ensure_min_size()`. Uses `image` crate with Lanczos3 filtering.
+- **3 new VisionEvent variants** — `ScreenshotAnalyzed`, `VisionContextBuilt`, `PreprocessorTransform`, `AnalysisStarted`, `AnalysisFailed` (24 total event variants).
+- **2 new VisionCapability variants** — `Screenshot`, `Ocr`, `Metadata`, `Embedding`, `Cache` added.
+- **4 new VisionErrorCategory variants** — `Screenshot`, `Preprocessor`, `Context`, `Metadata`.
+- **9 new tests** — context_builder (3), preprocessor (8), screenshot (3) = 14 new tests (41 total in nova_vision).
+
+### Verification (all 4 gates green)
+```
+cargo fmt --all                                      ✅ (0)
+cargo clippy --workspace --all-targets -- -D warnings ✅ (0)
+cargo test --workspace                               ✅ (nova_vision: 41 tests, workspace: all pass)
+cargo run -p nova_demo                              ✅ (all demo sections work)
+```
+
+### Architecture
+- All ML behind `VisionProvider` trait — swap mock for real engine at composition root.
+- `ScreenshotAnalyzer` trait allows future desktop/Android screenshot providers.
+- `VisionContext` feeds AI Runtime with structured visual context (OCR, scene, objects, colors, faces, UI elements).
+- `ImagePreprocessor` enables model-specific image preprocessing without engine changes.
+- Everything offline-first by default; no network calls.
+
+## Modified Files
+- `modules/vision/src/screenshot.rs` (NEW — screenshot analyzer)
+- `modules/vision/src/context_builder.rs` (NEW — vision context builder)
+- `modules/vision/src/preprocessor.rs` (NEW — image preprocessor)
+- `modules/vision/src/engine.rs` (added screenshot, context_builder, preprocessor)
+- `modules/vision/src/error.rs` (added error categories)
+- `modules/vision/src/events.rs` (added event variants)
+- `modules/vision/src/lib.rs` (added module exports)
+- `modules/vision/src/permission.rs` (added capabilities)
+
+---
+
 # Session Summary - 2026-07-13
 
 ## Agent

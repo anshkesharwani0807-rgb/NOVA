@@ -89,6 +89,31 @@ pub enum VisionEventPayload {
         duplicate_of: String,
         similarity: f64,
     },
+    ScreenshotAnalyzed {
+        element_count: usize,
+        button_count: usize,
+        dialog_count: usize,
+        duration_ms: u64,
+    },
+    VisionContextBuilt {
+        has_ocr: bool,
+        has_caption: bool,
+        has_screenshot: bool,
+    },
+    PreprocessorTransform {
+        original_w: u32,
+        original_h: u32,
+        result_w: u32,
+        result_h: u32,
+        mode: String,
+    },
+    AnalysisStarted {
+        path: String,
+    },
+    AnalysisFailed {
+        path: String,
+        error: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -132,6 +157,11 @@ impl VisionEvent {
             VisionEventPayload::BatchAnalysisCompleted { .. } => "vision.batch_analysis_completed",
             VisionEventPayload::VisionToolInvoked { .. } => "vision.tool_invoked",
             VisionEventPayload::DuplicateFound { .. } => "vision.duplicate_found",
+            VisionEventPayload::ScreenshotAnalyzed { .. } => "vision.screenshot_analyzed",
+            VisionEventPayload::VisionContextBuilt { .. } => "vision.context_built",
+            VisionEventPayload::PreprocessorTransform { .. } => "vision.preprocessor_transform",
+            VisionEventPayload::AnalysisStarted { .. } => "vision.analysis_started",
+            VisionEventPayload::AnalysisFailed { .. } => "vision.analysis_failed",
         }
     }
 
@@ -207,6 +237,32 @@ impl VisionEvent {
                 duplicate_of,
                 similarity,
             } => format!("Duplicate: {path} matches {duplicate_of} ({similarity:.2})"),
+            VisionEventPayload::ScreenshotAnalyzed {
+                element_count,
+                button_count,
+                dialog_count,
+                duration_ms,
+            } => format!(
+                "Screenshot: {element_count} elements ({button_count} buttons, {dialog_count} dialogs) in {duration_ms}ms"
+            ),
+            VisionEventPayload::VisionContextBuilt {
+                has_ocr,
+                has_caption,
+                has_screenshot,
+            } => format!(
+                "Context built: ocr={has_ocr}, caption={has_caption}, screenshot={has_screenshot}"
+            ),
+            VisionEventPayload::PreprocessorTransform {
+                original_w,
+                original_h,
+                result_w,
+                result_h,
+                mode,
+            } => format!("Preprocessor: {original_w}x{original_h} -> {result_w}x{result_h} ({mode})"),
+            VisionEventPayload::AnalysisStarted { path } => format!("Analysis started: {path}"),
+            VisionEventPayload::AnalysisFailed { path, error } => {
+                format!("Analysis failed: {path} - {error}")
+            }
         }
     }
 }

@@ -1,5 +1,37 @@
 # CHANGELOG
 
+## [0.17.0] - 2026-07-14 — Vision Engine Finalization
+
+### Added
+- **ScreenshotAnalyzer trait + MockScreenshotAnalyzer** — UI element detection with 24
+  element types (Button, TextBlock, Form, Dialog, NavigationBar, ErrorDialog,
+  PermissionDialog, InputField, Checkbox, RadioButton, Dropdown, Icon, Image, Link,
+  List, Card, Tab, Slider, Toggle, Unknown). Mock returns realistic 4-element UI hierarchy.
+- **VisionContext + VisionContextBuilder** — constructs AI Runtime-compatible context from
+  `AnalysisResult`, image metadata, and screenshot data. `to_prompt_context()` generates
+  human-readable AI prompt. `from_analysis()`, `from_screenshot()`, `build_context()` methods.
+- **ImagePreprocessor** — 5 resize modes (Fit/Fill/Crop/Pad/Exact), 4 normalization modes
+  (None/ZeroToOne/MinusOneToOne/Imagenet), `to_rgba()`, `to_grayscale()`, `ensure_min_size()`.
+  Uses `image` crate with Lanczos3 filtering. 8 unit tests.
+- **5 new VisionEvent variants** — `ScreenshotAnalyzed`, `VisionContextBuilt`,
+  `PreprocessorTransform`, `AnalysisStarted`, `AnalysisFailed` (24 total).
+- **5 new VisionCapability variants** — `Screenshot`, `Ocr`, `Metadata`, `Embedding`, `Cache`.
+- **4 new VisionErrorCategory variants** — `Screenshot`, `Preprocessor`, `Context`, `Metadata`.
+- **14 new tests** (3 context_builder + 8 preprocessor + 3 screenshot = 41 total in nova_vision).
+
+### Fixed
+- `screenshot.rs`: `summary()` method now calls `self.has_errors()` and
+  `self.has_permission_request()` instead of standalone shadow functions.
+- `preprocessor.rs`: `PngEncoder` uses `write_image()` API (image 0.25) instead of removed `encode()`.
+- `context_builder.rs`: removed unused `OcrBlock` import.
+- All formatting fixed across new files.
+
+### Build
+- All 4 verification gates green across the entire workspace
+- 0 fmt errors, 0 clippy warnings, all tests pass, demo runs cleanly
+
+---
+
 ## [0.16.0] - 2026-07-14 — Plugin SDK & Extension Platform
 
 ### Added

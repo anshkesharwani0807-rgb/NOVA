@@ -47,12 +47,20 @@
 - [x] All documentation updated
 - [x] All M1–M13 exit criteria verified
 
-## Milestone 14 — Knowledge & Memory Intelligence
-- [x] `nova_knowledge` crate (`KnowledgeEngine`, `MemoryAnalyzer`, `KnowledgeGraph`, `RelationshipEngine`, `TimelineGenerator`, `SmartRecall`, `SummaryEngine`)
-- [x] 9 knowledge event variants on event bus with activity trail
-- [x] Memory analysis: categorization, importance scoring, tag extraction, entity extraction, dedup, link suggestions
-- [x] Timeline generation: daily/weekly/monthly/project/conversation
-- [x] Contextual recall with time/category filtering
-- [x] Offline summaries: conversation/project/daily/cluster
-- [x] Demo extended — analysis, timeline, graph, summary all exercised
+## Milestone 14 — NOVA Vision Engine
+- [x] `nova_vision` crate as `KernelModule` (`VisionSystem`)
+- [x] `VisionProvider` trait with 17+ methods (offline mock default)
+- [x] Image processing: loading, decoding, metadata, thumbnails, perceptual hashing
+- [x] AI engines (trait + mock): OCR, captioning, embedding, object detection, scene classification, face detection/clustering, quality/color analysis, visual tagging
+- [x] `VisionEngine` — `analyze()` combining all sub-components
+- [x] `VisionManager` — priority job queue with deduplication
+- [x] `VisualSearch` — multi-modal search (text, OCR, tags, captions, embeddings)
+- [x] `VisionCache` — typed LRU caches with TTL and memory budget
+- [x] `ScreenshotAnalyzer` trait + `MockScreenshotAnalyzer` — UI element detection (24 element types)
+- [x] `VisionContextBuilder` — AI Runtime-compatible context from analysis + screenshots
+- [x] `ImagePreprocessor` — 5 resize modes, 4 normalization modes, RGBA/grayscale conversion
+- [x] 6 AI tools (`vision_tool!` macro) — permission-gated + activity trail
+- [x] 24 `VisionEvent` payload variants, `VisionPermissionManager`, `VisionConfig`
 - [x] All 4 verification gates green across workspace (0 clippy warnings, 0 fmt errors, all tests pass)
+- [x] Demo integration — vision module lifecycle, tools, permissions, analysis
+- [x] Documentation updated — AI_CONTEXT, SESSION, TASKS, ROADMAP, CHANGELOG, RELEASES

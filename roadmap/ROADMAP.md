@@ -309,43 +309,40 @@ and comprehensive test coverage.
 
 ---
 
-## Milestone 14 - Knowledge & Memory Intelligence (COMPLETE)
+## Milestone 14 — NOVA Vision Engine (COMPLETE)
 
-**Objective:** Evolve NOVA from storing memories into understanding, organizing and
-reasoning over them — offline-first, privacy-first, event-driven, modular.
+**Objective:** Build the perception layer that allows NOVA to understand visual
+information — offline-first, privacy-first, provider-abstracted, event-driven.
 
 **Deliverables:**
-- `nova_knowledge` crate as a standalone engine (not a KernelModule — depends on
-  kernel, memory, search)
-- `KnowledgeEngine` — public API wrapping all sub-components
-- `MemoryAnalyzer` — categorization, importance scoring, tag extraction, entity
-  extraction, Jaccard-based duplicate detection, content link suggestions
-- `KnowledgeGraph` — entity/relationship store with adjacency, find, search, upsert
-- `RelationshipEngine` — 6 known relationship patterns (works_on, had_idea, uses,
-  assigned, visited, documents), detection between entity pairs
-- `TimelineGenerator` — daily/weekly/monthly/project/conversation timelines
-- `SmartRecall` — contextual retrieval wrapping UniversalSearch with time/category
-  filters
-- `SummaryEngine` — deterministic offline summaries (conversation, project, daily,
-  cluster) with key point extraction
-- 9 `KnowledgeEventPayload` variants on the event bus (MemoryAnalyzed, MemoryLinked,
-  EntityCreated, RelationshipCreated, KnowledgeUpdated, TimelineGenerated,
-  SummaryCreated, RecallCompleted, GraphUpdated)
-- Event bus publish + activity trail logging for all operations
-- Demo extension exercising analysis, timeline, graph, and summary
+- `nova_vision` crate as `KernelModule` (`VisionSystem`)
+- `VisionProvider` trait with 17+ methods covering all vision operations
+- Image processing: loading, decoding, metadata, thumbnails, perceptual hashing
+- AI engine traits + mocks: OCR, captioning, embedding, object detection, scene
+  classification, face system, quality/color analysis, visual tagging
+- `VisionEngine` — `analyze()` + `analyze_batch()` combining all sub-components
+- `VisionManager` — priority job queue (Low/Normal/High/Critical) with dedup
+- `VisualSearch` — multi-modal search (text, metadata, OCR, tags, captions, embeddings)
+- `VisionCache` — typed LRU caches for thumbnails, embeddings, OCR, captions
+- `ScreenshotAnalyzer` — UI element detection (24 element types), future desktop support
+- `VisionContextBuilder` — AI Runtime-compatible context from analysis + screenshots
+- `ImagePreprocessor` — 5 resize modes, 4 normalization modes, format conversion
+- 6 AI tools — permission-gated via `VisionPermissionManager` + activity trail
+- 24 `VisionEvent` payload variants published on event bus
+- 7 `VisionCapability` variants, `VisionConfig`, typed error categories
+- 41 unit tests + full demo integration
 
 **Exit Criteria:**
-- All 4 verification gates green:
-  - `cargo fmt --all -- --check` — clean
-  - `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings
-  - `cargo test --workspace` — all 155+ tests pass
-  - `cargo run -p nova_demo` — knowledge engine demo section runs successfully
-- No existing APIs or tests broken
-- No cloud dependency; all analysis offline, deterministic
+- All 4 verification gates green
+- `cargo clippy -D warnings` — zero warnings
+- `cargo fmt --check` — clean
+- `cargo test --workspace` — all 380+ tests pass
+- `cargo run -p nova_demo` — vision module lifecycle, tools, analysis demonstrated
+- No M1-M13 regressions
 
 ---
 
-## Milestone 13 — Plugin SDK & Extension Platform (COMPLETE)
+## Milestone 15 — Plugin SDK & Extension Platform (COMPLETE)
 
 **Objective:** Make NOVA extensible without modifying core modules — plugin lifecycle,
 permission-gated sandbox, isolated storage, and event bus integration.

@@ -2,6 +2,7 @@ pub mod cache;
 pub mod caption;
 pub mod color;
 pub mod config;
+pub mod context_builder;
 pub mod decoder;
 pub mod detection;
 pub mod embedding;
@@ -15,19 +16,24 @@ pub mod manager;
 pub mod metadata;
 pub mod ocr;
 pub mod permission;
+pub mod preprocessor;
 pub mod providers;
 pub mod quality;
 pub mod scene;
+pub mod screenshot;
 pub mod search;
 pub mod tags;
 pub mod thumbnail;
 pub mod tools;
 
 pub use config::VisionConfig;
+pub use context_builder::{VisionContext, VisionContextBuilder};
 pub use engine::{AnalysisResult, VisionEngine};
 pub use events::{VisionEvent, VisionEventPayload};
 pub use permission::{VisionCapability, VisionPermissionManager};
+pub use preprocessor::{ImagePreprocessor, PreprocessedImage, ResizeMode};
 pub use providers::VisionProvider;
+pub use screenshot::{ScreenshotAnalysis, ScreenshotAnalyzer, UiElement, UiElementType};
 pub use search::VisualSearch;
 pub use tools::VisionToolkit;
 
@@ -110,6 +116,18 @@ impl VisionSystem {
 
     pub fn audit_log(&self) -> Vec<VisionEvent> {
         self.audit.read().clone()
+    }
+
+    pub fn screenshot_analyzer(&self) -> &Arc<dyn ScreenshotAnalyzer> {
+        &self.engine.screenshot
+    }
+
+    pub fn context_builder(&self) -> &Arc<VisionContextBuilder> {
+        &self.engine.context_builder
+    }
+
+    pub fn preprocessor(&self) -> &Arc<ImagePreprocessor> {
+        &self.engine.preprocessor
     }
 
     pub fn update_config(&self, new_config: VisionConfig) {
