@@ -19,5 +19,8 @@ nova_search = { path = "../../modules/search" }
 nova_ai = { path = "../../modules/ai" }
 nova_voice = { path = "../../modules/voice" }
 nova_comms = { path = "../../modules/comms" }
+nova_vision = { path = "../../modules/vision" }
 nova_plugin_host = { path = "../../modules/plugin_host" }
+nova_knowledge = { path = "../../modules/knowledge" }
+nova_automation = { path = "../../modules/automation" }
 tokio = { workspace = true }

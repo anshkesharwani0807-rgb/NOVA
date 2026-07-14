@@ -1,5 +1,105 @@
 # CHANGELOG
 
+## [0.15.0] - 2026-07-14 — Automation Engine
+
+### Added
+- **Dedicated `nova_automation` crate** (`modules/automation/`) with full workflow orchestration:
+  - `Workflow`, `WorkflowStep`, `TriggerConfig`, `WorkflowSummary` — domain model with validation
+  - `WorkflowRegistry` — CRUD + enable/disable + find_by_trigger
+  - `ActionType` — 14 action variants (Speak, Notify, OpenApp, LaunchActivity, Clipboard,
+    CreateMemory, SearchMemory, RunAI, CaptureVoice, AnalyzeImage, DeviceControl,
+    PluginInvocation, Wait, SubWorkflow)
+  - `Condition` — 12 condition variants (And, Or, Not, Comparison, Regex, Contains, Numeric,
+    DateCompare, PermissionCheck, ContextCheck, True, False)
+  - `TriggerType` — 13 trigger variants (Time, Date, Battery, Charging, WiFi, Bluetooth,
+    DeviceState, Memory, Voice, Vision, Manual, EventBus, Plugin)
+  - `Scheduler` — time-based trigger checking with `get_next_scheduled`
+  - `ExecutionEngine` — sequential/parallel execution, retry, cancellation, step outcomes
+  - `HistoryStore` trait + `InMemoryHistory` — execution history tracking
+  - `AutomationEventPayload` — 10 event variants published on the event bus
+  - `KernelModule` lifecycle integration (`AutomationEngine`)
+- **Comprehensive test suite:** 56 unit tests + 36 integration tests = 92 total
+- **Demo extension** (`apps/nova-demo`): step `[7c]` demonstrates workflow creation,
+  manual trigger, execution history, scheduler, and event bus capture
+
+### Build
+- Updated workspace members: `modules/automation` added
+- Updated `apps/nova-demo/Cargo.toml` with `nova_automation` dependency
+- All 4 verification gates green across the entire workspace
+
+### Added
+- **Knowledge & Memory Intelligence (`modules/knowledge`):** `nova_knowledge` crate with
+  `KnowledgeEngine` — evolves NOVA from storing memories into understanding, organizing, and
+  reasoning over them. Offline-first, privacy-first, event-driven.
+- **`MemoryAnalyzer`:** automatic categorization (9 categories), importance scoring,
+  tag extraction, named entity extraction (Person/Place/Project/Document/Conversation/
+  Task/Idea/Technology), Jaccard-based duplicate detection, content link suggestions.
+- **`KnowledgeGraph`:** entity/relationship store with adjacency tracking, upsert/search/
+  get_connected, `find_entity_by_name`, entity/relationship counts, type-filtered query.
+- **`RelationshipEngine`:** 6 known relationship patterns (works_on, had_idea, uses,
+  assigned, visited, documents) detected between extracted entities.
+- **`TimelineGenerator`:** daily/weekly/monthly/project/conversation timeline generation
+  with entry count limiting and sorted chronology.
+- **`SmartRecall`:** contextual memory retrieval wrapping `UniversalSearch` with time range
+  and category/tag filtering; convenience methods for text recall, last-week, by-category.
+- **`SummaryEngine`:** deterministic offline summary generation (conversation/project/daily/
+  cluster) with key point extraction, category counting, and content truncation.
+- **Event bus integration:** 9 `KnowledgeEventPayload` variants published on memory analysis,
+  linking, entity/relationship creation, timeline generation, summary creation, and recall.
+  Logged to Activity Trail.
+- **Knowledge engine demo (`apps/nova-demo`):** Memory analysis, timeline generation, graph
+  inspection, and summary generation demonstrated end-to-end.
+
+### Build
+- Updated workspace members: `modules/knowledge` added
+- All 4 verification gates green across the entire workspace
+- 0 clippy warnings, 0 fmt errors, all 155+ tests pass
+- All M1–M14 exit criteria verified
+
+---
+
+### Added
+- **`nova_vision` module (`modules/vision`):** a reusable, offline-first vision intelligence platform
+  integrated as a kernel `KernelModule` (`VisionSystem`). Never tightly coupled to any single
+  module; all ML backends behind the `VisionProvider` trait.
+- **Provider abstraction (`providers/`):** `VisionProvider` trait with 17 methods covering image
+  loading, decoding, metadata, thumbnails, perceptual hashing, OCR, object detection, scene
+  classification, captioning, embedding, face detection/clustering, quality/color analysis, and
+  tagging. `MockVisionProvider` provides deterministic offline default.
+- **Image processing pipeline:** `ImageLoader`, `ImageDecoder` (RGBA/grayscale/thumbnail + EXIF
+  orientation), `MetadataReader`, `ThumbnailGenerator` (fit/fill/crop modes), `ImageHasher`
+  (average/difference/perceptual with Hamming distance).
+- **AI vision engines (trait + mock):** `OcrEngine`, `CaptionEngine`, `VisionEmbedder`,
+  `ObjectDetector`, `SceneClassifier`, `FaceEngine`, `QualityAnalyzer`, `ColorAnalyzer`,
+  `VisualTagger` — each with deterministic `Mock*` impl for offline demo/testing.
+- **`VisionEngine`:** high-level `analyze()` / `analyze_batch()` combining all sub-components
+  in a single call; `find_similar()` via cosine similarity on embeddings; `is_duplicate()` via
+  perceptual hash comparison.
+- **`VisionManager`:** analysis job queue with priority ordering (Low/Normal/High/Critical),
+  deduplication via `ImageHash`, batch processing, background worker interface.
+- **`VisualSearch`:** multi-modal search (text, metadata, OCR, tags, captions, embeddings);
+  `SearchQuery` builder; vector similarity search; full-text across all indexed fields.
+- **`VisionCache`:** typed LRU caches for thumbnails, embeddings, OCR results, captions with
+  TTL expiry and memory budget tracking.
+- **6 AI tools via `vision_tool!` macro:** `DescribeImageTool`, `ExtractTextTool`,
+  `FindObjectsTool`, `SearchImagesTool`, `AnalyzePhotoTool`, `GenerateCaptionTool` — each
+  gated by `VisionPermissionManager` + activity trail logging.
+- **`VisionEvent`:** 21 event payload variants covering the full vision lifecycle (image
+  loaded/decoded/analyzed, OCR/caption/embedding, object/face/scene detection, quality/color,
+  tags, search, cache, thumbnails, hashing, duplicates, tools).
+- **`VisionPermissionManager`:** capability-based permission gating (Camera, GalleryRead,
+  MediaPicker, Storage, CameraFrame, FaceRecognition, VisualSearch).
+- **`VisionConfig`:** serializable defaults (thumbnail size, cache limits, OCR language,
+  embedding dim, batch size, similarity/duplicate thresholds, feature toggles).
+- **`VisionError`:** typed error category unifying all vision failures into `NovaError`.
+- **Demo integration:** `nova_vision` dependency added to `apps/nova-demo`.
+
+### Build
+- Added `modules/vision` to workspace members in root `Cargo.toml`.
+- All 4 verification gates green: `fmt`, `clippy -D warnings`, `test --all-targets`.
+
+---
+
 ## [Unreleased] - Milestone 8 (Android Shell)
 
 ### Added

@@ -10,11 +10,13 @@
 use std::sync::Arc;
 
 use nova_ai::{AIEngine, RemoteProvider, DEFAULT_SESSION};
+use nova_automation::{ActionType, AutomationEngine, Scheduler, TriggerConfig, TriggerType};
 use nova_comms::DeviceComms;
 use nova_kernel::{
     get_config, get_recent_activity, get_recent_egress, ConsentGrant, EgressPolicy, EgressRequest,
     EventMetadata, Kernel, NovaEvent, RequestKind,
 };
+use nova_knowledge::KnowledgeEngine;
 use nova_memory::{MemoryCategory, MemoryEngine, MemoryRecord, Query, SortBy};
 use nova_plugin_host::PluginHost;
 use nova_search::UniversalSearch;
@@ -229,7 +231,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("     (all processing stayed on-device; see the activity trail for each event)");
     }
 
-    // Let the spawned async listeners flush their log lines.
+    // 6d) Knowledge & Memory Intelligence (Milestone 11 — offline, privacy-first).
+    println!("\n[4d] Knowledge Engine (Milestone 11 — memory analysis + graph + timeline):");
+    let knowledge = Arc::new(KnowledgeEngine::new());
+    knowledge.set_memory(memory.clone());
+    knowledge.set_search(Arc::new(UniversalSearch::new(kernel.clone())));
+    // Analyze the memories we inserted earlier.
+    for r in memory.find(&nova_memory::Query::new().include_deleted(true))? {
+        let analyzed = knowledge.analyze_memory(&r)?;
+        println!(
+            "     analyzed  [{}]  category={}  importance={}  tags={:?}",
+            analyzed.memory_id, analyzed.category, analyzed.importance, analyzed.tags
+        );
+    }
+    // Generate a timeline (daily).
+    let all_memories = memory.find(&nova_memory::Query::new().include_deleted(true))?;
+    match knowledge.generate_timeline(&all_memories, "daily") {
+        Ok(tl) => println!(
+            "     timeline  {}  entries={}  range={:?}",
+            tl.granularity,
+            tl.entries.len(),
+            tl.time_range
+        ),
+        Err(e) => println!("     timeline  error: {e}"),
+    }
+    // Show the knowledge graph.
+    {
+        let graph = knowledge.get_graph();
+        println!(
+            "     entities={}  relationships={}",
+            graph.entity_count(),
+            graph.relationship_count()
+        );
+        if graph.entity_count() > 0 {
+            for e in graph.all_entities() {
+                println!("       entity   {} ({})", e.name, e.entity_type);
+            }
+        }
+    }
+    // Generate a summary.
+    match knowledge.summarize(&all_memories, "cluster", "today") {
+        Ok(s) => println!(
+            "     summary   type={}  len={}",
+            s.summary_type,
+            s.content.len()
+        ),
+        Err(e) => println!("     summary   error: {e}"),
+    }
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
     // 7) Show the user-facing Activity Trail (Principle 5 — transparency).
@@ -325,6 +373,94 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Restore the local mock as the active model for a clean post-condition.
     ai.models().set_active("mock-local").ok();
 
+    // 7c) Automation Engine (Milestone 12 — workflow, triggers, scheduler, execution, history).
+    println!("\n[7c] Automation Engine (Milestone 12 — workflows + triggers + execution):");
+    let engine = AutomationEngine::new();
+    engine.set_event_bus(kernel.event_bus.clone());
+    // Create and register a workflow with a manual trigger.
+    let mut wf = engine.create_workflow("demo_reminder", "Remind me about something");
+    wf.triggers.push(TriggerConfig {
+        trigger: TriggerType::Manual,
+        conditions: None,
+    });
+    wf.steps.push(nova_automation::WorkflowStep {
+        id: "step1".into(),
+        name: "Notify user".into(),
+        action: ActionType::Notify {
+            title: "Automation Demo".into(),
+            body: "Hello from automation!".into(),
+            priority: nova_automation::NotifyPriority::Normal,
+        },
+        condition: None,
+        retry_count: 0,
+        timeout_ms: 30_000,
+        continue_on_failure: false,
+    });
+    engine.register_workflow(wf.clone())?;
+    println!(
+        "     registered workflow: {} (enabled={})",
+        wf.name, wf.enabled
+    );
+    // Trigger the workflow manually.
+    let execution_id = engine.trigger_manual(&wf.id)?;
+    println!("     triggered execution: {}", execution_id);
+    // Check execution history.
+    let records = engine.history().by_workflow(&wf.id, 10);
+    println!(
+        "     history entries    : {} for workflow '{}'",
+        records.len(),
+        wf.name
+    );
+    if let Some(last) = records.first() {
+        println!("     last status        : {:?}", last.status);
+    }
+    // Demonstrate scheduler trigger checking.
+    let cfg = nova_automation::AutomationConfig::default();
+    let scheduler = Scheduler::new(cfg);
+    let workflows = engine.registry().all();
+    let ctx = std::collections::HashMap::<String, String>::new();
+    let triggered = scheduler.check_triggers(&workflows, &ctx);
+    println!(
+        "     scheduler triggered: {} of {} workflow(s)",
+        triggered.len(),
+        workflows.len()
+    );
+    // Demonstrate event bus integration.
+    let mut rx = kernel.event_bus.subscribe();
+    let mut wf2 = engine.create_workflow("event_demo", "Event-driven workflow");
+    wf2.triggers.push(TriggerConfig {
+        trigger: TriggerType::Manual,
+        conditions: None,
+    });
+    wf2.steps.push(nova_automation::WorkflowStep {
+        id: "step2".into(),
+        name: "Speak".into(),
+        action: ActionType::Speak {
+            text: "Event bus works!".into(),
+        },
+        condition: None,
+        retry_count: 0,
+        timeout_ms: 30_000,
+        continue_on_failure: false,
+    });
+    engine.register_workflow(wf2)?;
+    let _ = engine.trigger_manual("event_demo");
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    let mut capturable_events = 0;
+    loop {
+        match rx.try_recv() {
+            Ok(ev) if ev.metadata.origin_module == "automation" => capturable_events += 1,
+            Err(_) => break,
+            _ => {}
+        }
+    }
+    println!(
+        "     event bus events   : {} automation event(s) captured",
+        capturable_events
+    );
+    // Clean up the execution state.
+    let _ = engine.cancel_execution(&execution_id);
+
     // 10) Tear down modules in reverse dependency order (Milestone 3), then the kernel.
     println!("\n[8] Shutting down modules (reverse order)...");
     kernel.registry.tear_down().await?;
@@ -334,7 +470,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     kernel.shutdown();
     println!("\n========================================");
-    println!(" Demo complete. Foundation + gates + module lifecycle + offline AI inference work.");
+    println!(" Demo complete. Foundation + gates + module lifecycle + offline AI + automation workflows work.");
     println!("========================================");
     Ok(())
 }

@@ -8,10 +8,15 @@ members = [
     "modules/ai",
     "modules/comms",
     "modules/device",
+    "modules/vision",
+    "modules/sync",
+    "modules/knowledge",
+    "modules/automation",
     "modules/plugin_host",
     "api/ffi",
     "api/jni",
     "apps/nova-demo",
+    "apps/nova-desktop",
 ]
 
 [workspace.dependencies]

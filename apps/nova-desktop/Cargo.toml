@@ -1,0 +1,30 @@
+[package]
+name = "nova_desktop"
+version = "0.1.0"
+edition = "2021"
+description = "NOVA Windows Desktop Shell — native Rust GUI (egui/eframe)"
+
+[[bin]]
+name = "nova-desktop"
+path = "src/main.rs"
+
+[dependencies]
+nova_kernel = { path = "../../src/kernel" }
+nova_memory = { path = "../../modules/memory" }
+nova_search = { path = "../../modules/search" }
+nova_ai = { path = "../../modules/ai" }
+nova_voice = { path = "../../modules/voice" }
+nova_vision = { path = "../../modules/vision" }
+nova_comms = { path = "../../modules/comms" }
+nova_device = { path = "../../modules/device" }
+nova_plugin_host = { path = "../../modules/plugin_host" }
+eframe = "0.27"
+egui = "0.27"
+egui-winit = "0.27"
+tray-icon = "0.20"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }

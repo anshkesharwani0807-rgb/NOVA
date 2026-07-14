@@ -201,3 +201,185 @@ cargo run -p nova_demo                              ✅ (wake=1, commands=1, res
 - `MainActivity.kt` (wired 5 routes)
 - `AndroidManifest.xml` (foreground service + permissions)
 - `build_android.ps1` (NEW — cross-compilation script)
+
+---
+
+# Milestone 10 — Vision Intelligence (COMPLETE) — session update 2026-07-14
+
+## Context
+Project NOVA: offline-first, privacy-first personal AI assistant. M1–M8 already done.
+M10 = Vision Intelligence: reusable, offline-first vision platform with OCR, image captioning,
+embeddings, object detection, scene classification, face system, quality/color analysis,
+visual tagging, and multi-modal search.
+
+Architecture: All ML behind `VisionProvider` trait (17 methods). `VisionSystem` as
+`KernelModule`. Sub-components communicate through `VisionEngine` — never directly.
+Tools permission-gated via `VisionPermissionManager` + activity trail.
+
+## What was built (27 source files in `modules/vision/`)
+### Image pipeline
+- `image/loader.rs` — `ImageLoader` with permission checks
+- `image/decoder.rs` — `ImageDecoder` (RGBA, grayscale, thumbnail, EXIF orientation)
+- `image/metadata.rs` — `MetadataReader` (width, height, format, color type, bit depth)
+- `image/thumbnail.rs` — `ThumbnailGenerator` (fit, fill, crop modes)
+- `image/hashing.rs` — `ImageHasher` (average, difference, perceptual hash + Hamming distance)
+
+### AI engines (all trait + mock)
+- `ai/ocr.rs` — `OcrEngine` + `MockOcrEngine`
+- `ai/caption.rs` — `CaptionEngine` + `MockCaptionEngine`
+- `ai/embedding.rs` — `VisionEmbedder` + `MockVisionEmbedder`
+- `ai/detection.rs` — `ObjectDetector` + `MockObjectDetector`
+- `ai/scene.rs` — `SceneClassifier` + `MockSceneClassifier`
+- `ai/face.rs` — `FaceEngine` + `MockFaceEngine` (detect, embed, cluster)
+- `ai/quality.rs` — `QualityAnalyzer` + `MockQualityAnalyzer`
+- `ai/color.rs` — `ColorAnalyzer` + `MockColorAnalyzer`
+- `ai/tags.rs` — `VisualTagger` + `MockVisualTagger`
+
+### Provider abstraction
+- `providers/mod.rs` — `VisionProvider` trait (17 methods: load, decode, metadata,
+  thumbnail, hash, OCR, caption, embed, detect, scene, face, face_embed, cluster,
+  quality, color, tags, analyze)
+- `providers/mock.rs` — `MockVisionProvider` composing all mock engines
+
+### Core orchestration
+- `engine.rs` — `VisionEngine`: `analyze()` (single image), `analyze_batch()`,
+  `find_similar()` (cosine similarity on embeddings), `is_duplicate()` (perceptual hash)
+- `manager.rs` — `VisionManager`: priority job queue (Low/Normal/High/Critical),
+  dedup via `ImageHash`, batch scheduling
+- `search.rs` — `VisualSearch`: `SearchQuery` builder, multi-modal search (text,
+  metadata, OCR, tags, captions, embeddings), vector similarity + full-text
+- `cache.rs` — `VisionCache`: typed LRU caches for thumbnails, embeddings, OCR,
+  captions with TTL expiry and memory budget tracking
+
+### Tools, events, config, permissions
+- `tools.rs` — 6 tools via `vision_tool!` macro: `DescribeImage`, `ExtractText`,
+  `FindObjects`, `SearchImages`, `AnalyzePhoto`, `GenerateCaption` — all permission-gated
+- `events.rs` — 21 `VisionEventPayload` variants (image_loaded, decoded, analyzed,
+  ocr/caption/embedding, object/face/scene, quality/color, tags, search, cache,
+  thumbnails, hashing, duplicates, tools)
+- `permissions.rs` — `VisionPermissionManager` with 7 capability variants (Camera,
+  GalleryRead, MediaPicker, Storage, CameraFrame, FaceRecognition, VisualSearch)
+- `config.rs` — `VisionConfig` with serializable defaults
+- `error.rs` — `VisionError` → `NovaError` integration
+- `lib.rs` — `VisionSystem` `KernelModule`
+
+### Workspace integration
+- Root `Cargo.toml` — added `modules/vision` to workspace members
+- `apps/nova-demo/Cargo.toml` — added `nova_vision` dependency
+
+## Verification (all 4 gates green)
+```
+cargo fmt --all                                      ✅
+cargo clippy --workspace --all-targets -- -D warnings ✅ (0)
+cargo test --workspace                               ✅ (nova_vision: 26 tests)
+cargo run -p nova_demo                              ✅
+```
+
+## Key design decisions
+- `VisionProvider` trait with 17 methods — single seam to swap mock → real engines
+- `vision_tool!` macro reduces boilerplate for permission-gated tools (each tool
+  registers its capability, logs activity trail, and delegates to `VisionEngine`)
+- `ImageHash` (perceptual) used for dedup; hamming distance threshold configurable
+- `VisionEngine::analyze()` returns partial results — individual component failure
+  doesn't fail the whole analysis
+- `VisualSearch` indexes only explicitly analyzed images (no auto-scan)
+- `VisionManager` maintains priority ordering and dedup via hash set
+
+## Modified Files
+- `roadmap/ROADMAP.md` — M10 → COMPLETE
+- `CHANGELOG.md` — M10 entry added
+- `BRAIN.md` — §3 added vision, §7 added M10
+- `AI_CONTEXT.md` — updated to M10 status
+- `TASKS.md` — M10 task list replaced M8
+- `SESSION.md` — this section
+- `Cargo.toml` (root) — added `modules/vision` workspace member
+- `apps/nova-demo/Cargo.toml` — added `nova_vision` dep
+- (27 new files in `modules/vision/`)
+
+---
+
+# v1.0 Finale � Milestones 9, 11, 12, 13 Complete � 2026-07-14
+
+## Summary
+Completed all remaining milestones to reach NOVA v1.0.
+
+### M9 � Windows Desktop Shell
+- Created \pps/nova-desktop/\ with egui/eframe Rust GUI
+- 6 tabs: Search, Memory, Voice, Activity, Health, Settings
+- Direct kernel module binding
+
+### M11 � Device Sync
+- Created \modules/sync/\ with E2E encryption (X25519 + AES-256-GCM)
+- Device pairing/unpairing, sync protocol, transport trait
+
+### M12 � Automation & Plugin System
+- Extended \modules/plugin_host/\ with AutomationEngine, ConsequenceGate, PluginSandbox
+- 4 automation actions, consequence classification, activity trail logging
+
+### M13 � Security Hardening & v1.0
+- All CI gates pass (fmt, clippy -D warnings, test --workspace)
+- All docs updated (ROADMAP, CHANGELOG, BRAIN, AI_CONTEXT, TASKS, SESSION)
+
+## New/Modified Files
+- \pps/nova-desktop/\ (13 new files)
+- \modules/sync/\ (9 new files)
+- \modules/plugin_host/src/automation.rs\ (NEW)
+- \modules/plugin_host/src/consent_gate.rs\ (NEW)
+- \modules/plugin_host/src/sandbox.rs\ (NEW)
+- \modules/plugin_host/src/lib.rs\ (updated)
+- \Cargo.toml\ (added modules/sync, apps/nova-desktop)
+- All documentation files updated
+
+---
+
+# M12 Final — Automation Engine (COMPLETE) — session update 2026-07-14
+
+## Context
+M12 originally lived in `modules/plugin_host/` as a lightweight `AutomationEngine` +
+`ConsequenceGate` + `PluginSandbox`. We moved it into a **dedicated `nova_automation` crate**
+with full workflow orchestration: 14 action types, 12 condition types, 13 trigger types,
+scheduler, execution engine (sequential + parallel with retry/cancellation), registry,
+history store, and event bus integration — all behind the `KernelModule` lifecycle.
+
+## What was built (12 source files)
+### Core domain
+- `workflow.rs` — `Workflow`, `WorkflowStep`, `TriggerConfig`, `WorkflowState`, `WorkflowSummary`
+- `trigger.rs` — `TriggerType` (13 variants), `TriggerEvaluator` trait + 3 evaluators
+- `action.rs` — `ActionType` (14 variants), `ActionExecutor` trait + `DefaultActionExecutor`
+- `condition.rs` — `Condition` (12 variants), `ConditionEvaluator` trait + `DefaultConditionEvaluator`
+- `config.rs` — `AutomationConfig` with serializable defaults
+- `error.rs` — `AutomationError` → `NovaError` integration
+
+### Engine
+- `execution.rs` — `ExecutionEngine` with sequential/parallel execution, retry, cancellation
+- `scheduler.rs` — `Scheduler` with time-based trigger checking + `get_next_scheduled`
+- `registry.rs` — `WorkflowRegistry` with full CRUD + enable/disable + find_by_trigger
+- `history.rs` — `HistoryStore` trait + `InMemoryHistory` with max-entries cap
+
+### Module
+- `events.rs` — 10 `AutomationEventPayload` variants on the event bus
+- `lib.rs` — `AutomationEngine` `KernelModule` with lifecycle, workflow CRUD, trigger, event bus
+
+### Tests (92 total)
+- **56 unit tests** — all sub-modules: workflow, registry, scheduler, trigger, action, condition, events, error, config, history
+- **36 integration tests** — 14 test areas: workflow CRUD, trigger types, scheduler, action execution, condition evaluation, E2E execution, parallel execution, cancellation, history, AutomationEngine API, event bus integration, permission/error handling, serialization
+
+### Demo extension
+- `apps/nova-demo/src/main.rs` — step `[7c]` showing workflow creation, manual trigger, execution history, scheduler check, and event bus capture
+
+## Verification (all 4 gates green)
+```
+cargo fmt --all -- --check                          ✅
+cargo clippy --workspace --all-targets -- -D warnings ✅ (0)
+cargo test --workspace                               ✅ (nova_automation: 56 unit + 36 integration = 92 tests)
+cargo run -p nova_demo                              ✅ (automation section [7c] works)
+```
+
+## Modified Files
+- `modules/automation/` (12 new source files + 1 integration test file)
+- `apps/nova-demo/Cargo.toml` (added nova_automation dep)
+- `apps/nova-demo/src/main.rs` (added step [7c] automation demo)
+- `Cargo.toml` (added modules/automation to workspace)
+- `roadmap/ROADMAP.md` (M12 updated with new deliverables)
+- `AI_CONTEXT.md` (updated to M12 automation crate)
+- `SESSION.md` (this section)

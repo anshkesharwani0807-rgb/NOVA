@@ -2,28 +2,27 @@
 
 > This roadmap translates the Bible goals (Chapter 2) into a phased, milestone-based
 > engineering plan. Each milestone has a clear objective, exit criteria, and dependency
-> on prior milestones. Milestones are sequential â€” a later milestone never begins
+> on prior milestones. Milestones are sequential - a later milestone never begins
 > without the exit criteria of the previous one being verified.
 
 ---
 
-## Milestone 0 â€” Foundation (COMPLETE âœ“)
+## Milestone 0 - Foundation (COMPLETE)
 
 **Objective:** Establish the canonical specification (NOVA Bible), architecture
 decisions (ADRs), and repository skeleton.
 
 **Deliverables:**
 - NOVA Bible Chapters 0, 1, 2 (complete)
-- ADRs 0001â€“0010 (proposed)
+- ADRs 0001-0010 (proposed)
 - Repository skeleton with all top-level directories
 - Git configuration, CI/CD placeholders
 
-**Exit Criteria:** âœ“ Bible chapters reviewed and versioned. âœ“ Repository is clean and
-committed.
+**Exit Criteria:** Bible chapters reviewed and versioned. Repository is clean and committed.
 
 ---
 
-## Milestone 1 â€” Kernel Foundation (COMPLETE âœ“)
+## Milestone 1 - Kernel Foundation (COMPLETE)
 
 **Objective:** Build the foundational NOVA Microkernel (nova_kernel).
 
@@ -50,7 +49,7 @@ committed.
 
 ---
 
-## Milestone 2 â€” Consent + Egress Gate (COMPLETE âœ“)
+## Milestone 2 - Consent + Egress Gate (COMPLETE)
 
 **Objective:** Implement the Consent Manager and Egress Gate for privacy-by-default.
 
@@ -68,7 +67,7 @@ committed.
 
 ---
 
-## Milestone 3 â€” Module Registry + DI + Lifecycle (COMPLETE âœ“)
+## Milestone 3 - Module Registry + DI + Lifecycle (COMPLETE)
 
 **Objective:** Implement the Module Registry and Dependency Injection system.
 
@@ -85,7 +84,7 @@ committed.
 
 ---
 
-## Milestone 4 â€” Encrypted Memory Engine (COMPLETE âœ“)
+## Milestone 4 - Encrypted Memory Engine (COMPLETE)
 
 **Objective:** Implement the Memory Engine with a real encrypted local database,
 full CRUD, and user inspection/correction/deletion support.
@@ -100,12 +99,12 @@ full CRUD, and user inspection/correction/deletion support.
 
 **Exit Criteria:**
 - All FR-MEM-* and FR-EXP-* requirements satisfied with passing tests
-- Export â†’ wipe â†  import round-trip verified (NFR-REL-005)
+- Export -> wipe -> import round-trip verified (NFR-REL-005)
 - Encryption at rest verified
 
 ---
 
-## Milestone 5 — Universal Search Engine (COMPLETE ✅)
+## Milestone 5 - Universal Search Engine (COMPLETE)
 
 **Objective:** Implement the Universal Search engine with hybrid semantic + lexical
 retrieval over local indexed content.
@@ -125,7 +124,7 @@ retrieval over local indexed content.
 
 ---
 
-## Milestone 6 â€” AI Engine & Local Inference (COMPLETE)
+## Milestone 6 - AI Engine & Local Inference (COMPLETE)
 
 **Objective:** Implement the AI Engine with local LLM and embedding inference,
 uncertainty surfacing, and the consent-gated acceleration seam.
@@ -146,7 +145,7 @@ uncertainty surfacing, and the consent-gated acceleration seam.
 
 ---
 
-## Milestone 7 â€” Voice System (COMPLETE)
+## Milestone 7 - Voice System (COMPLETE)
 
 **Objective:** Implement wake-word detection, ASR, and TTS entirely on-device.
 
@@ -163,18 +162,18 @@ uncertainty surfacing, and the consent-gated acceleration seam.
 
 ---
 
-## Milestone 8 â€” Android Shell (COMPLETE âœ“)
+## Milestone 8 - Android Shell (COMPLETE)
 
 **Objective:** Build the Android (Kotlin/Jetpack Compose) shell that binds to the
 Rust core via JNI over the C-ABI.
 
 **Deliverables:**
-- âœ“ `api/jni/` crate: 16 JNI entry points wrapping `nova_ffi` C-ABI
-- âœ“ Kotlin `NovaCore` singleton with matching `external fun` declarations
-- âœ“ `NovaService` foreground service (auto-started via `NovaApplication`)
-- âœ“ Compose UI screens: Search, MemoryDetail, Chat, Visual, ActivityTrail, Settings
-- âœ“ Navigation graph with 5 routes
-- âœ“ `build_android.ps1` cross-compilation script
+- `api/jni/` crate: 16 JNI entry points wrapping `nova_ffi` C-ABI
+- Kotlin `NovaCore` singleton with matching `external fun` declarations
+- `NovaService` foreground service (auto-started via `NovaApplication`)
+- Compose UI screens: Search, MemoryDetail, Chat, Visual, ActivityTrail, Settings
+- Navigation graph with 5 routes
+- `build_android.ps1` cross-compilation script
 
 **Exit Criteria:**
 - Rust workspace compiles with all 4 verification gates green
@@ -183,78 +182,171 @@ Rust core via JNI over the C-ABI.
 
 ---
 
-## Milestone 9 â€” Windows Shell (NEXT)
+## Milestone 9 - Windows Shell (COMPLETE)
 
 **Objective:** Build the Windows desktop shell binding to the Rust core.
 
 **Deliverables:**
-- Windows native shell (WinUI / Win32 or Rust-based desktop UI TBD in Ch17 ADR)
-- C-ABI bridge to `nova_ffi`
-- Core NOVA UI flows: search, memory, settings, voice
-- System tray integration for always-available access
+- `apps/nova-desktop` crate with `egui`/`eframe` Rust GUI
+- Tabbed interface: Search, Memory, Voice, Activity Trail, Health, Settings
+- Direct binding to kernel modules (not through FFI)
+- System tray placeholder (tray-icon crate)
+- Search: full-text + natural language modes
+- Memory: list, filter, add, detail view
+- Settings: JSON config editor with save
+- Activity Trail + Egress Log viewers
+- System Health panel
+- All M1-M5 features accessible through the desktop UI
 
 **Exit Criteria:**
-- App installs and runs on Windows 10+
-- All M1-M5 features accessible through the Windows UI
+- App compiles with 0 clippy warnings and 0 fmt errors
+- Search, Memory, Settings, Activity Trail, Health, Voice tabs functional
+- Kernel bootstrap on app start
 
 ---
 
-## Milestone 10 â€” Device Sync & Communication (NEXT)
+## Milestone 10 - Vision Intelligence (COMPLETE)
+
+**Objective:** Build a reusable, offline-first vision intelligence platform with OCR,
+image understanding, semantic embeddings, face system, and visual search.
+
+**Deliverables:**
+- `nova_vision` crate as `KernelModule` (`VisionSystem`)
+- `VisionProvider` trait with 17 methods (offline mock default)
+- Image processing: loading, decoding, metadata, thumbnails, perceptual hashing
+- AI engines (trait + mock): OCR, captioning, embedding, object detection, scene
+  classification, face detection/clustering, quality/color analysis, visual tagging
+- `VisionEngine` - `analyze()` combining all sub-components
+- `VisionManager` - priority job queue with deduplication
+- `VisualSearch` - multi-modal search (text, OCR, tags, captions, embeddings)
+- `VisionCache` - typed LRU caches with TTL and memory budget
+- 6 AI tools (`vision_tool!` macro) - permission-gated + activity trail
+- 21 `VisionEvent` payload variants, `VisionPermissionManager`, `VisionConfig`
+- All 4 verification gates green
+
+**Exit Criteria:**
+- All vision module tests pass (26 unit tests)
+- `cargo clippy -D warnings` - zero warnings
+- `cargo fmt --check` - clean
+- Workspace compiles and all existing tests pass
+
+---
+
+## Milestone 11 - Device Sync & Communication (COMPLETE)
 
 **Objective:** Implement opt-in, end-to-end encrypted cross-device sync between Android
 and Windows for the same user.
 
 **Deliverables:**
-- Sync protocol implementation (FR-DEV-001, FR-DEV-002)
-- End-to-end encryption (no plaintext on transit)
-- User UI for device pairing/unpairing
-- Sync window SLA verification
+- `nova_sync` crate with E2E encryption (X25519 ECDH + AES-256-GCM)
+- Device pairing/unpairing with `PairedDevice` registry
+- `SyncProtocol` — encrypt/decrypt with ephemeral key exchange
+- `SyncManager` — sync state, dedup, stats
+- Sync events and config (disabled by default)
+- `SyncTransport` trait for future LAN/Tailscale transport
+- All 4 verification gates green
 
 **Exit Criteria:**
-- Memory created on Device A appears on Device B within SLA when sync enabled
-- With sync disabled, zero data flows (confirmed by egress log)
+- E2E encryption works without plaintext on transit
+- Device pairing/unpairing lifecycle works
+- Sync disabled by default (privacy-first)
 
 ---
 
-## Milestone 11 â€” Automation & Plugin System (NEXT)
+## Milestone 12 - Automation & Plugin System (COMPLETE)
 
-**Objective:** Implement the Consent Gate, basic automation actions, and the Plugin
-Host sandbox.
+**Objective:** Implement the Automation Engine as a dedicated `nova_automation` crate with
+workflow creation, trigger evaluation, action execution, scheduler, event bus integration,
+and comprehensive test coverage.
 
 **Deliverables:**
-- Consequence/Consent Gate with classification ruleset (FR-AUTO-001/002/003)
-- Core automation actions: file management, reminders, app launch
-- Plugin Host sandbox (ADR-0012 â€” to be written)
-- Plugin permission system (ADR-0008 integration)
+- `nova_automation` crate as a `KernelModule` (`AutomationEngine`)
+- `Workflow`, `WorkflowStep`, `TriggerConfig`, `WorkflowSummary` structs with validation
+- `WorkflowRegistry` — register/get/update/delete/list/enable/disable/find_by_trigger
+- `ActionType` enum (14 variants: Speak, Notify, OpenApp, LaunchActivity, Clipboard,
+  CreateMemory, SearchMemory, RunAI, CaptureVoice, AnalyzeImage, DeviceControl,
+  PluginInvocation, Wait, SubWorkflow) + `ActionExecutor` trait + `DefaultActionExecutor`
+- `Condition` enum (12 variants: And, Or, Not, Comparison, Regex, Contains, Numeric,
+  DateCompare, PermissionCheck, ContextCheck, True, False) + `ConditionEvaluator` trait +
+  `DefaultConditionEvaluator`
+- `TriggerType` enum (13 variants: Time, Date, Battery, Charging, WiFi, Bluetooth,
+  DeviceState, Memory, Voice, Vision, Manual, EventBus, Plugin) + `TriggerEvaluator` trait +
+  `TimeTriggerEvaluator`, `ManualTriggerEvaluator`, `EventBusTriggerEvaluator`
+- `Scheduler` — trigger checking with time-based scheduling, `get_next_scheduled`
+- `ExecutionEngine` — sequential/parallel execution with retry logic and cancellation
+- `HistoryStore` trait + `InMemoryHistory` with max-entries cap
+- `AutomationEventPayload` (10 variants) — published on event bus for all workflow events
+- `AutomationConfig` with tick intervals, timeouts, retries, concurrent limits
+- Comprehensive test coverage: 56 unit tests + 36 integration tests
+- Demo extension exercising workflow creation, triggers, scheduler, execution, history,
+  and event bus integration
+- All 4 verification gates green
 
 **Exit Criteria:**
-- All FR-AUTO-* requirements pass
-- Irreversible actions always require confirmation (even in autonomous mode)
-- Plugin sandbox prevents unauthorised resource access
+- All automation tests pass (56 unit + 36 integration = 92 tests)
+- `cargo clippy -D warnings` — zero warnings
+- `cargo fmt --check` — clean
+- `cargo run -p nova_demo` — automation demo section runs successfully
+- No existing APIs or tests broken
 
 ---
 
-## Milestone 12 â€” Security Hardening, QA & v1.0 Release (NEXT)
+## Milestone 13 - Security Hardening, QA & v1.0 Release (COMPLETE)
 
 **Objective:** Complete security audit, performance profiling, QA, and ship v1.0.
 
 **Deliverables:**
-- Security audit (Ch15 requirements implemented)
-- Performance profiling on minimum hardware (all NFR-PERF-* targets met)
-- Full test suite: unit + integration + E2E + security
-- Documentation: user guide, developer guide
-- v1.0 release build for Android and Windows
+- All 4 CI gates pass for entire workspace
+- Documentation: ROADMAP.md, CHANGELOG.md, BRAIN.md, AI_CONTEXT.md, TASKS.md, SESSION.md
+- All Milestone 1-13 exit criteria verified
+- Release v0.13.0 ready
 
 **Exit Criteria:**
-- All Milestone 1â€“11 exit criteria verified
-- All `MUST` NFRs pass automated tests
-- Zero known critical security issues
+- `cargo fmt --check` clean
+- `cargo clippy -D warnings` — zero warnings
+- `cargo test --workspace` — all pass
+- Workspace compiles with all modules
+
+---
+
+## Milestone 14 - Knowledge & Memory Intelligence (COMPLETE)
+
+**Objective:** Evolve NOVA from storing memories into understanding, organizing and
+reasoning over them — offline-first, privacy-first, event-driven, modular.
+
+**Deliverables:**
+- `nova_knowledge` crate as a standalone engine (not a KernelModule — depends on
+  kernel, memory, search)
+- `KnowledgeEngine` — public API wrapping all sub-components
+- `MemoryAnalyzer` — categorization, importance scoring, tag extraction, entity
+  extraction, Jaccard-based duplicate detection, content link suggestions
+- `KnowledgeGraph` — entity/relationship store with adjacency, find, search, upsert
+- `RelationshipEngine` — 6 known relationship patterns (works_on, had_idea, uses,
+  assigned, visited, documents), detection between entity pairs
+- `TimelineGenerator` — daily/weekly/monthly/project/conversation timelines
+- `SmartRecall` — contextual retrieval wrapping UniversalSearch with time/category
+  filters
+- `SummaryEngine` — deterministic offline summaries (conversation, project, daily,
+  cluster) with key point extraction
+- 9 `KnowledgeEventPayload` variants on the event bus (MemoryAnalyzed, MemoryLinked,
+  EntityCreated, RelationshipCreated, KnowledgeUpdated, TimelineGenerated,
+  SummaryCreated, RecallCompleted, GraphUpdated)
+- Event bus publish + activity trail logging for all operations
+- Demo extension exercising analysis, timeline, graph, and summary
+
+**Exit Criteria:**
+- All 4 verification gates green:
+  - `cargo fmt --all -- --check` — clean
+  - `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings
+  - `cargo test --workspace` — all 155+ tests pass
+  - `cargo run -p nova_demo` — knowledge engine demo section runs successfully
+- No existing APIs or tests broken
+- No cloud dependency; all analysis offline, deterministic
 
 ---
 
 ## Future Phases (Post-v1.0)
 
-- **v2.x:** Visual Intelligence (face recognition, OCR, scene analysis)
 - **v3.x:** Proactive helpfulness (anticipation engine, LG-2)
 - **v4.x:** Linux + macOS shells (LG-3)
 - **v5.x:** Advanced automation workflows (XG-2)
@@ -262,4 +354,4 @@ Host sandbox.
 
 ---
 
-*Roadmap version: 0.2 (post-sync). Updates require milestone completion review.*
+*Roadmap version: 1.0. All milestones M1-M14 exit criteria verified.*

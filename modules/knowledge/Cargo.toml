@@ -1,0 +1,24 @@
+[package]
+name = "nova_knowledge"
+version = "0.1.0"
+edition = "2021"
+description = "NOVA Knowledge & Memory Intelligence — categorization, knowledge graph, timeline, smart recall, summarization"
+
+[lib]
+name = "nova_knowledge"
+path = "src/lib.rs"
+
+[dependencies]
+nova_kernel = { path = "../../src/kernel" }
+nova_memory = { path = "../../modules/memory" }
+nova_search = { path = "../../modules/search" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+parking_lot = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+rusqlite = { version = "0.31", features = ["bundled"] }

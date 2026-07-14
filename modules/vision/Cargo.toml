@@ -1,0 +1,27 @@
+[package]
+name = "nova_vision"
+version = "0.1.0"
+edition = "2021"
+description = "Vision intelligence: OCR, image understanding, face system, visual search, and image processing"
+
+[lib]
+name = "nova_vision"
+path = "src/lib.rs"
+
+[dependencies]
+nova_kernel = { path = "../../src/kernel" }
+nova_ai = { path = "../ai" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+async-trait = { workspace = true }
+parking_lot = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "bmp", "gif", "tiff"] }
+base64 = "0.22"
+
+[dev-dependencies]
+tokio = { workspace = true }

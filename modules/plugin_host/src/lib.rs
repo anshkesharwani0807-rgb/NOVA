@@ -1,14 +1,28 @@
+pub mod automation;
+pub mod consent_gate;
+pub mod sandbox;
+
 use async_trait::async_trait;
-use nova_kernel::{Kernel, KernelModule, Result};
+use nova_kernel::{Kernel, KernelModule, ModuleHealth, Result};
 use std::sync::Arc;
+
+use automation::AutomationEngine;
+use consent_gate::ConsequenceGate;
 
 pub struct PluginHost {
     kernel: Arc<Kernel>,
+    engine: AutomationEngine,
 }
 
 impl PluginHost {
     pub fn new(kernel: Arc<Kernel>) -> Self {
-        Self { kernel }
+        let gate = Arc::new(ConsequenceGate::new());
+        let engine = AutomationEngine::new(gate);
+        Self { kernel, engine }
+    }
+
+    pub fn engine(&self) -> &AutomationEngine {
+        &self.engine
     }
 }
 
@@ -22,7 +36,14 @@ impl KernelModule for PluginHost {
         env!("CARGO_PKG_VERSION")
     }
 
-    /// Initializes and starts the plugin runtime and verification services.
+    fn dependencies(&self) -> Vec<&'static str> {
+        vec![]
+    }
+
+    fn health(&self) -> ModuleHealth {
+        ModuleHealth::healthy()
+    }
+
     async fn start(&self) -> Result<()> {
         let event_bus = self.kernel.event_bus.clone();
         let mut rx = event_bus.subscribe();
@@ -30,7 +51,6 @@ impl KernelModule for PluginHost {
         tokio::spawn(async move {
             tracing::info!("PluginHost sandbox runner and listener started.");
             while let Ok(event) = rx.recv().await {
-                // Listen to plugin execution commands
                 if event.metadata.origin_module == "Shell"
                     && event.metadata.causing_action.as_deref() == Some("run_plugin")
                 {
