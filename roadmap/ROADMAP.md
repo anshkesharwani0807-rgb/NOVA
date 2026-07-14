@@ -111,7 +111,7 @@ full CRUD, and user inspection/correction/deletion support.
 retrieval over local indexed content.
 
 **Deliverables:**
-- Local HNSW vector index (FR-SRCH-002, ADR-0006)
+- Local exact cosine KNN vector index (SQLite-backed; FR-SRCH-002, ADR-0006)
 - Lexical full-text search layer
 - Permission-scoped indexing (FR-SRCH-003)
 - Natural language query interface (FR-SRCH-001)

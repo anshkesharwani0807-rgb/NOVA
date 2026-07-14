@@ -43,10 +43,11 @@ each Bible chapter remains the authoritative source for its own decisions.
 | ADR-0003 | Modular monolith / microkernel core; multi-process only where OS-forced | Proposed | docs/adr |
 | ADR-0004 | In-process typed async Event Bus with provenance; sole inter-module channel | Proposed | docs/adr |
 | ADR-0005 | Async runtime for I/O + bounded prioritized compute pool | Proposed | docs/adr |
-| ADR-0006 | Encrypted SQLite-class store (system of record) + embedded HNSW vector index | Proposed | docs/adr |
+| ADR-0006 | Encrypted SQLite-class store (system of record) + exact cosine KNN vector index | Proposed | docs/adr |
 | ADR-0007 | NOVA-owned InferenceRuntime interface; pluggable open local backends + consent-gated seam | Proposed | docs/adr |
 | ADR-0008 | Centralized layered typed configuration; private/conservative defaults; no remote layer | Proposed | docs/adr |
-| ADR-0009..0014 | Logging, error handling, DI, plugin sandboxing, key mgmt, build toolchain | Planned | docs/adr |
+| ADR-0009..0010 | Logging, error handling | Proposed | docs/adr |
+| ADR-0011..0014 | DI, plugin sandboxing, key mgmt, build toolchain | Planned | docs/adr |
 
 ## Repository / governance decisions
 

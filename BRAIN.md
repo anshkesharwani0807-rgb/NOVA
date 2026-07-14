@@ -77,7 +77,7 @@ Planned future edges (NOT yet implemented — do not add until their milestone):
 Project root: `D:\Ansh Kesharwani\Documents\NOVA`
 
 - `BRAIN.md` (this), `AI_CONTEXT.md` (live state), `README.md`, `CHANGELOG.md`, `roadmap/ROADMAP.md`
-- `tasks/M1.md … M6.md` — per-milestone briefs (read the current one before coding)
+- `TASKS.md` — per-milestone task tracking (read the current one before coding)
 - `docs/bible/` — source-of-truth design (Phase 0 + Chapters 1–4 written; 5–20 TBD)
 - `docs/adr/` — Architecture Decision Records ADR-0001..0010 (**read before changing architecture**)
 - `docs/governance/` — decision log, traceability matrix, glossary
@@ -141,15 +141,20 @@ GitHub: private repo `https://github.com/anshkesharwani0807-rgb/NOVA` (branch `m
 - ✅ **M4 Encrypted Memory Engine** (`nova_memory`) — local encrypted SQLite (AES-256-GCM +
   `KeyProvider`); `MemoryRecord`, 13 `MemoryCategory`; full API; persists across restarts;
   publishes `MemoryEvent` (Created/Updated/Deleted) on the event bus.
-- 🔄 **M5 Universal Search Index** (`nova_search`) — IN PROGRESS. `SearchEngine` (SQLite index):
-  insert/update/delete/search/rebuild/clear/stats; query types exact/partial/prefix/phrase,
-  AND/OR, tag/source/category/date filters, ranking, pagination; auto-indexes memory via
-  `MemoryEvent`; future seams for vector/semantic/image/OCR/face/object search (trait stubs).
-  Depends on `memory`. **See `AI_CONTEXT.md` for exact in-progress files.**
-- ⏳ **M6+** — AI runtime, plugin sandbox, voice, then remaining capabilities.
+- ✅ **M5 Universal Search Index** (`nova_search`) — hybrid lexical+semantic search engine
+  (SQLite FTS + exact cosine KNN vector store); permission-scoped indexing; natural language
+  query parser; auto-indexes memory via `MemoryEvent`; schema v2; search latency within
+  NFR-PERF-003 budget.
+- ✅ **M6 AI Engine & Local Inference** (`nova_ai`) — Candle GGUF LLM backend, BERT embeddings,
+  uncertainty surfacing, consent-gated remote acceleration seam, model lifecycle manager,
+  streaming inference, tool-calling framework. All FR-AI-001..005 implemented.
+- ✅ **M7 Offline Voice System** (`nova_voice`) — provider abstractions (7 traits), offline
+  mock stack, full pipeline (VAD → wake-word → streaming ASR → AI → streaming TTS), barge-in,
+  cancellation, session manager, 11 voice events, 5 integration tests.
+- ⏳ **M8+** — Android shell, Windows shell, device sync, plugin sandbox, security hardening.
 
-`voice`, `ai`, `comms`, `plugin_host` are working `KernelModule` **skeletons** (start/stop
-cleanly, no real work yet).
+`comms` and `plugin_host` are working `KernelModule` **skeletons** (start/stop cleanly, no
+real work yet).
 
 ---
 

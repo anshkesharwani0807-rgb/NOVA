@@ -36,8 +36,8 @@ constrained by a principle or decision, it cites the ID (e.g. D1, D3, Principle 
 | ADR-0006 | Local persistence & storage engine | Proposed | Memory, Search, DB (Ch14) |
 | ADR-0007 | On-device AI inference runtime | Proposed | AI Engine (Ch11) |
 | ADR-0008 | Configuration system | Proposed | Config System spec |
-| ADR-0009 | Logging & observability (privacy-preserving) | Planned (next) | Logging spec |
-| ADR-0010 | Error-handling strategy | Planned (next) | Error-handling spec |
+| ADR-0009 | Logging & observability (privacy-preserving) | Proposed | Logging spec |
+| ADR-0010 | Error-handling strategy | Proposed | Error-handling spec |
 | ADR-0011 | Dependency injection / composition | Planned (next) | DI spec |
 | ADR-0012 | Plugin system & sandboxing model | Planned (next) | Plugin Loader (Ch13) |
 | ADR-0013 | Encryption & key management | Planned (next) | Security (Ch15) |
