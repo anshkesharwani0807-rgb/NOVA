@@ -1,45 +1,68 @@
-# AI_CONTEXT.md — live state of the NOVA AI Runtime (Milestone 6)
+# AI_CONTEXT.md — live state of the NOVA Project (Milestone 8)
 
-> Companion to `BRAIN.md` and `SESSION.md`. Read this before touching `modules/ai`.
+> Companion to `BRAIN.md` and `SESSION.md`. Read before making any changes.
 
-## Status: Milestone 6 COMPLETE (2026-07-14)
+## Status: Milestones 1–8 COMPLETE (2026-07-14)
 
-All M6 requirements are implemented, tested, and gated green
+All M1–M8 requirements are implemented, tested, and all 4 verification gates green
 (`fmt` / `clippy -D warnings` / `test --workspace` / `run -p nova_demo`).
 
-## What exists in `modules/ai`
+## Project structure overview
 
-| File | Purpose | Requirements |
-|------|---------|--------------|
-| `lib.rs` | `AIEngine` `KernelModule`, public API (`complete`/`chat`), `ai:inference` handler | M6 core |
-| `provider.rs` | `InferenceProvider` trait, `MockProvider` (offline default), streaming, cancellation | FR-AI-001 |
-| `candle_provider.rs` | GGUF LLM backend via Candle | FR-AI-001 |
-| `embedder.rs` | BERT sentence embeddings (pure Rust) | FR-AI-002 |
-| `uncertainty.rs` | Confidence scoring + honest "I don't know" (FR-AI-003) | FR-AI-003 |
-| `remote_provider.rs` | Consent-gated remote seam through `EgressGate` (FR-AI-004) | FR-AI-004 |
-| `model_manager.rs` | Lifecycle: register/set_active/load/unload/reload/state/wait/list | FR-AI-005 |
-| `runtime.rs` | `InferenceEngine`: queue, lazy load, streaming, reasoning loop, uncertainty | M6 core |
-| `context.rs` / `prompt.rs` / `session.rs` / `tool.rs` / `events.rs` | Modular context, deterministic prompt, history, tools, event narration | M6 core |
+```text
+src/kernel/          nova_kernel — microkernel, event bus, config, consent, egress, module registry
+modules/memory/      nova_memory — encrypted SQLite memory engine (AES-256-GCM)
+modules/search/      nova_search — hybrid lexical+semantic search engine
+modules/voice/       nova_voice — offline voice pipeline (VAD→wake→ASR→AI→TTS)
+modules/ai/          nova_ai — Candle GGUF LLM + BERT embeddings, tool calling
+modules/comms/       nova_comms — skeleton
+modules/plugin_host/ nova_plugin_host — skeleton
+api/ffi/             nova_ffi — C-ABI seam (31 exported functions)
+api/jni/             nova_jni — Android JNI bridge (16 entry points over FFI)
+apps/nova-demo/      nova_demo — CLI smoke test
+```
 
-## Tests (in `tests/` + inline `#[cfg(test)]`)
-- `tests/ai_runtime_tests.rs` — context, prompt, lifecycle (FR-AI-005), engine, cancellation,
-  tool/reasoning, kernel lifecycle, failure recovery.
-- `tests/benchmarks.rs` — NFR-PERF-002: latency, throughput, cold vs warm, memory (sysinfo).
-- `embedder.rs` — dim constant, empty batch, missing-model failure, idempotent load.
-- `remote_provider.rs` — consent-gated, egress-validated, audit-logged, sim support.
-- `uncertainty.rs` — 11 scoring cases.
+## M8 Android Shell
+
+### Rust side
+- **`api/jni/src/lib.rs`** — 16 `extern "system"` JNI entry points wrapping `nova_ffi`.
+  Names follow `Java_com_example_nova_NovaCore_<method>`.
+- **`api/jni/Cargo.toml`** — `crate-type = ["cdylib"]`, deps `jni 0.21` + `nova_ffi`.
+- **`api/ffi/src/lib.rs`** — extended with 16 new C-ABI functions (memory CRUD, search,
+  config, activity trail, egress, health, stats, count, purge).
+
+### Kotlin side (`D:\NOVA\`)
+- **`NovaCore.kt`** — singleton, loads `libnova_jni.so`, 16 `external fun` matching JNI
+- **`NovaService.kt`** — foreground service (`nova_core_channel`), `START_STICKY`
+- **`NovaApplication.kt`** — starts `NovaService` on app launch
+- **`ui/navigation/Routes.kt`** — 5 routes: Search, MemoryDetail(id), VisualIntelligence,
+  ChatIntelligence, ActivityTrail, Settings
+- **`ui/nativ/ActivityTrailScreen.kt`** — activity trail + egress log viewer
+- **`ui/nativ/SettingsScreen.kt`** — config editor, health report, stats, memory count
+- **`build_android.ps1`** — cross-compile for `aarch64-linux-android` / `x86_64-linux-android`
+
+## AI Runtime (`modules/ai`) — unchanged from M6
+
+| File | Purpose |
+|------|---------|
+| `lib.rs` | `AIEngine` `KernelModule`, public API, `ai:inference` handler |
+| `provider.rs` | `InferenceProvider` trait, `MockProvider` |
+| `candle_provider.rs` | GGUF LLM backend via Candle |
+| `embedder.rs` | BERT sentence embeddings |
+| `uncertainty.rs` | Confidence scoring (FR-AI-003) |
+| `remote_provider.rs` | Consent-gated remote seam (FR-AI-004) |
+| `model_manager.rs` | Lifecycle management (FR-AI-005) |
+| `runtime.rs` | Inference engine, reasoning loop |
 
 ## Key invariants (do not break)
-- Remote seam is **disabled by default** and **every** outbound attempt goes through
-  `EgressGate::guard` (which logs to Activity Trail + Egress Log). A denied request errors;
-  it never silently falls back to local.
-- `model_manager::wait_for_provider_state` must NOT hold an `RwLockReadGuard` across an `.await`
-  (clippy `await_holding_lock`). Keep the guard scoped, then sleep.
-- `ai:inference` handler returns a `String`; callers must handle the `inference error:` Err case
-  (the demo does via `match`, not `?`).
-- The mock provider is the registered default; real providers are added by the composition root.
+- Remote seam is **disabled by default**; every outbound attempt goes through `EgressGate::guard`.
+- `model_manager::wait_for_provider_state` must NOT hold `RwLockReadGuard` across `.await`.
+- `ai:inference` handler returns `String`; callers handle the `inference error:` Err case.
+- The mock provider is the registered default; real providers added by composition root.
+- JNI names must match `Java_com_example_nova_NovaCore_<method>` exactly.
+- FFI functions return heap-allocated JSON `*mut c_char` that caller must free via `nova_free_string`.
 
-## Continuing to Milestone 7 (Voice)
-Do NOT start M7 unless instructed. When you do: voice plugs into the kernel as a `KernelModule`
-skeleton already exists (`modules/voice`); wire it through the event bus and (later) the AI
-runtime per BRAIN §3 dependency graph (AI → Voice is a planned future edge).
+## Continuing to Milestone 9 (Windows Shell)
+Do NOT start M9 unless instructed. M9 will build a Windows desktop shell binding to
+`nova_ffi` (WinUI / C-ABI binary). The `api/jni` crate is Android-only; Windows will use
+`api/ffi` directly or via a thin C#/WinRT P/Invoke layer.

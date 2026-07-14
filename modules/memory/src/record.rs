@@ -144,7 +144,7 @@ impl MemoryRecord {
 }
 
 /// Text match mode for search.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SearchMode {
     Exact,
     Contains,
@@ -152,7 +152,7 @@ pub enum SearchMode {
 }
 
 /// Result ordering.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SortBy {
     CreatedAtAsc,
     CreatedAtDesc,
@@ -161,7 +161,7 @@ pub enum SortBy {
 }
 
 /// A query over stored memories combining metadata filters and text/tag search.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Query {
     pub text: Option<String>,
     pub mode: Option<SearchMode>,

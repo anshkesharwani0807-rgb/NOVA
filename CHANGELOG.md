@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## [Unreleased] - Milestone 8 (Android Shell)
+
+### Added
+- **`api/jni/` crate:** JNI bridge (`cdylib`) with 16 entry points wrapping `nova_ffi`:
+  `nativeInit`, `nativeShutdown`, `nativeMemoryInsert`, `nativeMemorySearch`,
+  `nativeMemoryFindById`, `nativeMemoryDelete`, `nativeMemoryList`, `nativeMemoryCount`,
+  `nativeSearchText`, `nativeSearchNl`, `nativeGetActivityTrail`, `nativeGetEgressLog`,
+  `nativeGetConfig`, `nativeUpdateConfig`, `nativeGetHealthReport`, `nativeSearchStats`.
+  Naming follows the `Java_com_example_nova_NovaCore_<method>` JNI convention.
+- **`nova_ffi` extensions:** 16 new C-ABI functions (memory CRUD, search, config R/W,
+  activity trail, egress log, health report) — all returning JSON strings freed via
+  `nova_free_string`.
+- **Kotlin `NovaCore` object:** singleton in `com.example.nova` with `external fun`
+  matching every JNI entry point; loads `libnova_jni.so` via `System.loadLibrary`.
+- **`NovaService`:** Android foreground service (notification channel `nova_core_channel`,
+  `START_STICKY`) that calls `NovaCore.init`/`shutdown` — auto-started from
+  `NovaApplication.onCreate`.
+- **Compose UI screens:**
+  - `ActivityTrailScreen` — displays activity trail + egress log from native core
+  - `SettingsScreen` — config JSON editor, health report, search stats, memory count
+  - `SearchScreen` — added `onActivityTrailClick` callback with timeline icon
+- **Navigation:** `Route.ActivityTrail` + `Route.Settings` added to sealed interface;
+  wired into `MainActivity` entry provider (5 routes total).
+- **`build_android.ps1`:** cross-compilation script for `aarch64-linux-android` /
+  `x86_64-linux-android`; copies `libnova_jni.so` to `app/src/main/jniLibs/<abi>/`.
+
+### Changed
+- `nova_ffi` crate type includes `"rlib"` in addition to `"cdylib"` and `"staticlib"`.
+- `modules/memory/src/record.rs`: added `serde::Serialize`/`Deserialize` to `Query`,
+  `SearchMode`, `SortBy`.
+- `modules/search/src/engine.rs`: added `serde::Serialize`/`Deserialize` to `IndexStats`.
+
+### Build
+- All 4 verification gates green: `fmt`, `clippy -D warnings`, `test --workspace`,
+  `run -p nova_demo`.
+
+---
+
 ## [Unreleased] - Milestone 7 (Offline Voice System)
 
 ### Added

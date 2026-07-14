@@ -151,7 +151,8 @@ GitHub: private repo `https://github.com/anshkesharwani0807-rgb/NOVA` (branch `m
 - ✅ **M7 Offline Voice System** (`nova_voice`) — provider abstractions (7 traits), offline
   mock stack, full pipeline (VAD → wake-word → streaming ASR → AI → streaming TTS), barge-in,
   cancellation, session manager, 11 voice events, 5 integration tests.
-- ⏳ **M8+** — Android shell, Windows shell, device sync, plugin sandbox, security hardening.
+- ✅ **M8 Android Shell** — `api/jni` bridging crate (16 JNI entry points over `nova_ffi`); Kotlin `NovaCore` singleton + `NovaService` foreground service + Compose UI (search, memory detail, activity trail, settings).
+- ⏳ **M9+** — Windows shell, device sync, plugin sandbox, security hardening.
 
 `comms` and `plugin_host` are working `KernelModule` **skeletons** (start/stop cleanly, no
 real work yet).

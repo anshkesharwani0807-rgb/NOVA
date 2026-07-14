@@ -10,6 +10,7 @@ use crate::document::{Combine, IndexDocument, MatchMode, SearchQuery, SearchResu
 use crate::vector::VectorStore;
 use nova_kernel::{log_activity, ErrorCategory, NovaError, Result};
 use rusqlite::{params, params_from_iter, Connection};
+use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -72,7 +73,7 @@ fn like_escape(s: &str) -> String {
 }
 
 /// Aggregate index statistics.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct IndexStats {
     pub total: usize,
     pub sources: Vec<(String, usize)>,

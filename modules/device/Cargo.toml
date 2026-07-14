@@ -1,0 +1,25 @@
+[package]
+name = "nova_device"
+version = "0.1.0"
+edition = "2021"
+description = "Device intelligence: platform abstraction layer between AI and Android device capabilities"
+
+[lib]
+name = "nova_device"
+path = "src/lib.rs"
+
+[dependencies]
+nova_kernel = { path = "../../src/kernel" }
+nova_ai = { path = "../ai" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+async-trait = { workspace = true }
+parking_lot = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

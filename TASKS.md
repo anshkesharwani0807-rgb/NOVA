@@ -1,17 +1,17 @@
-# M5 Tasks: Universal Search Index
+# M8 Tasks: Android Shell
 
-- [x] Lexical full-text search layer (SQLite)
-- [x] Integration with Memory Engine (Event-based sync)
-- [x] Local vector index implementation (VectorStore — exact cosine KNN, SQLite-backed)
-- [x] Integrate VectorStore into SearchEngine (with rebuild-on-open persistence)
-- [x] Implement Hybrid retrieval logic (normalized lexical + semantic fusion)
-- [x] Permission-scoped indexing (source revocation actually removes vectors)
-- [x] Natural language query interface (`SearchQuery::parse`: tag/source/category/phrase)
-- [x] Search latency benchmarks (NFR-PERF-003)
-
-> Note: the M5 vector index uses an exact brute-force cosine store rather than an HNSW
-> ANN index. At single-user on-device scale it is fast, gives perfect recall, and — unlike
-> the `hnsw_rs` crate evaluated earlier — supports true removal (required for revocation)
-> and restart persistence (rebuilt from the authoritative embeddings in SQLite). An ANN
-> backend can replace it behind the same `VectorStore` API if corpus size ever demands it.
-
+- [x] Extend `nova_ffi` C-ABI with memory CRUD, search, config, activity trail, egress, health, stats, count
+- [x] Create `api/jni/` crate with `crate-type = ["cdylib"]`, `jni 0.21` dep
+- [x] Implement 16 JNI entry points in `api/jni/src/lib.rs` (Java_com_example_nova_NovaCore_* naming)
+- [x] Add serde derives to `Query`, `SearchMode`, `SortBy`, `IndexStats` for JSON serialization
+- [x] Create Kotlin `NovaCore` object with `external fun` matching JNI bridge
+- [x] Create `NovaService` foreground service (notification channel, START_STICKY)
+- [x] Auto-start service from `NovaApplication.onCreate`
+- [x] Add `ActivityTrail` + `Settings` routes to navigation graph
+- [x] Create `ActivityTrailScreen` (activity trail + egress log from native core)
+- [x] Create `SettingsScreen` (config editor, health report, stats, memory count)
+- [x] Wire `onActivityTrailClick` in SearchScreen header
+- [x] Update AndroidManifest with foreground service + permissions
+- [x] Create `build_android.ps1` cross-compilation script
+- [x] All 4 verification gates green
+- [x] Project docs updated (BRAIN.md, ROADMAP.md, CHANGELOG.md, AI_CONTEXT.md, SESSION.md, TASKS.md)

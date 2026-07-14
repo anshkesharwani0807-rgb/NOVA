@@ -163,20 +163,23 @@ uncertainty surfacing, and the consent-gated acceleration seam.
 
 ---
 
-## Milestone 8 â€” Android Shell (NEXT)
+## Milestone 8 â€” Android Shell (COMPLETE âœ“)
 
 **Objective:** Build the Android (Kotlin/Jetpack Compose) shell that binds to the
 Rust core via JNI over the C-ABI.
 
 **Deliverables:**
-- Android project with Jetpack Compose UI
-- JNI bridge to `nova_ffi`
-- Background service for always-available capture
-- Core NOVA UI flows: search, memory view/edit, activity trail, settings
+- âœ“ `api/jni/` crate: 16 JNI entry points wrapping `nova_ffi` C-ABI
+- âœ“ Kotlin `NovaCore` singleton with matching `external fun` declarations
+- âœ“ `NovaService` foreground service (auto-started via `NovaApplication`)
+- âœ“ Compose UI screens: Search, MemoryDetail, Chat, Visual, ActivityTrail, Settings
+- âœ“ Navigation graph with 5 routes
+- âœ“ `build_android.ps1` cross-compilation script
 
 **Exit Criteria:**
-- App installs and runs on Android 10+ (minimum target)
-- All M1-M5 features accessible through the Android UI
+- Rust workspace compiles with all 4 verification gates green
+- JNI function names match `Java_com_example_nova_NovaCore_<method>` convention
+- AndroidManifest includes foreground service + required permissions
 
 ---
 

@@ -7,8 +7,10 @@ members = [
     "modules/voice",
     "modules/ai",
     "modules/comms",
+    "modules/device",
     "modules/plugin_host",
     "api/ffi",
+    "api/jni",
     "apps/nova-demo",
 ]
 
