@@ -1,43 +1,36 @@
-name: NOVA Continuous Integration
+name: CI
 
-on:
-  push:
-    branches: [ main, dev ]
-  pull_request:
-    branches: [ main, dev ]
+on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  validate:
-    name: Code Quality & Testing
-    runs-on: windows-latest
-
+  verify:
+    runs-on: ubuntu-latest
     steps:
-    - name: Checkout Codebase
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Rust Toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        components: rustfmt, clippy
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt, clippy
 
-    - name: Cache Cargo Registry
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Check Formatting
-      run: cargo fmt --all -- --check
+      - name: fmt
+        run: cargo fmt --all -- --check
 
-    - name: Run Clippy Linter
-      run: cargo clippy --all-targets -- -D warnings
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
-    - name: Execute Workspace Test Suites
-      run: cargo test --workspace
+      - name: test
+        run: cargo test --workspace
+
+      - name: demo
+        run: cargo run -p nova_demo
