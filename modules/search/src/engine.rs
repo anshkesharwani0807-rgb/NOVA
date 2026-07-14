@@ -662,7 +662,11 @@ impl SearchEngine {
         for res in lexical_results {
             let doc_id = res.document.doc_id();
             let score = if has_semantic {
-                let lex_norm = if max_lex > 0.0 { res.score / max_lex } else { 0.0 };
+                let lex_norm = if max_lex > 0.0 {
+                    res.score / max_lex
+                } else {
+                    0.0
+                };
                 let sem = sem_by_id.get(&doc_id).copied().unwrap_or(0.0);
                 (0.4 * lex_norm) + (0.6 * sem)
             } else {

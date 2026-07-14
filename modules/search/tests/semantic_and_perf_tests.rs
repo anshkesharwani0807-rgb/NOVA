@@ -36,9 +36,15 @@ fn semantic_search_ranks_nearest_first() {
     let dir = tempdir().unwrap();
     let engine = SearchEngine::open(&dir.path().join("s.db")).unwrap();
 
-    engine.insert(&embedded_doc("1", "Alpha", "about cats", 1)).unwrap();
-    engine.insert(&embedded_doc("2", "Beta", "about dogs", 2)).unwrap();
-    engine.insert(&embedded_doc("3", "Gamma", "about birds", 3)).unwrap();
+    engine
+        .insert(&embedded_doc("1", "Alpha", "about cats", 1))
+        .unwrap();
+    engine
+        .insert(&embedded_doc("2", "Beta", "about dogs", 2))
+        .unwrap();
+    engine
+        .insert(&embedded_doc("3", "Gamma", "about birds", 3))
+        .unwrap();
 
     let mut q = SearchQuery::new();
     q.embedding = Some(embedding(2)); // closest to doc "2"
@@ -53,7 +59,9 @@ fn revocation_removes_vector_from_semantic_results() {
     let dir = tempdir().unwrap();
     let engine = SearchEngine::open(&dir.path().join("s.db")).unwrap();
 
-    engine.insert(&embedded_doc("1", "Secret", "sensitive", 7)).unwrap();
+    engine
+        .insert(&embedded_doc("1", "Secret", "sensitive", 7))
+        .unwrap();
 
     let mut q = SearchQuery::new();
     q.embedding = Some(embedding(7));
@@ -71,7 +79,9 @@ fn vectors_persist_across_reopen() {
 
     {
         let engine = SearchEngine::open(&db).unwrap();
-        engine.insert(&embedded_doc("1", "Persisted", "content", 5)).unwrap();
+        engine
+            .insert(&embedded_doc("1", "Persisted", "content", 5))
+            .unwrap();
     } // engine dropped, connection closed
 
     // Reopen: the vector index is rebuilt from the embeddings stored in SQLite.
@@ -123,7 +133,7 @@ fn search_latency_1k_docs() {
             metadata: "{}".to_string(),
             created_at: i as i64,
             updated_at: i as i64,
-            importance: (i % 100) as i32,
+            importance: i % 100,
             embedding: None,
         };
         engine.insert(&doc).unwrap();
@@ -133,7 +143,10 @@ fn search_latency_1k_docs() {
     let results = engine.search(&SearchQuery::partial("topic")).unwrap();
     let elapsed = start.elapsed();
 
-    println!("search over 1000 docs took {elapsed:?}, {} hits", results.len());
+    println!(
+        "search over 1000 docs took {elapsed:?}, {} hits",
+        results.len()
+    );
     assert!(!results.is_empty());
     assert!(
         elapsed.as_millis() < 500,

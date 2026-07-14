@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use nova_ai::AIEngine;
+use nova_ai::{AIEngine, RemoteProvider, DEFAULT_SESSION};
 use nova_comms::DeviceComms;
 use nova_kernel::{
     get_config, get_recent_activity, get_recent_egress, ConsentGrant, EgressPolicy, EgressRequest,
@@ -71,9 +71,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     kernel
         .registry
         .register(Arc::new(UniversalSearch::new(kernel.clone())))?;
-    kernel
-        .registry
-        .register(Arc::new(AIEngine::new(kernel.clone())))?;
+    let ai = Arc::new(AIEngine::new(kernel.clone()));
+    kernel.registry.register(ai.clone())?;
     kernel
         .registry
         .register(Arc::new(VoiceSystem::new(kernel.clone())))?;
@@ -177,6 +176,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| "<non-text response>".to_string());
     println!("    search response: {body}");
 
+    // 6b) AI Runtime (Milestone 6 — offline-first inference + uncertainty surfacing).
+    println!("\n[4b] AI Runtime (Milestone 6 — local inference):");
+    // Drive a turn through the public API. The runtime streams internally and returns an
+    // outcome that carries an estimated confidence (Principle 9 — honesty about limits /
+    // FR-AI-003), so uncertainty is surfaced rather than hidden behind a confident tone.
+    let handle = ai
+        .complete(DEFAULT_SESSION, "What did I store about the coast trip?")
+        .await?;
+    let outcome = handle.finish().await?;
+    println!("     reply      : {}", outcome.text);
+    println!(
+        "     confidence : {:.2} (uncertainty flagged: {})",
+        outcome.confidence, outcome.uncertainty_flagged
+    );
+
+    // The same runtime is reachable through the event bus (ai:inference request handler),
+    // proving the AI module integrates with the kernel's pub/sub + request/response seams.
+    let aimeta = EventMetadata::new("DemoShell", Some("ai_inference".to_string()));
+    let ai_response = kernel
+        .event_bus
+        .request("ai:inference", aimeta, Arc::new("Hello NOVA".to_string()))
+        .await?;
+    let ai_text = ai_response
+        .payload
+        .downcast_ref::<String>()
+        .cloned()
+        .unwrap_or_default();
+    println!("     via bus    : {ai_text}");
+
     // Let the spawned async listeners flush their log lines.
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
@@ -235,6 +263,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         d2.outcome, d2.reason
     );
 
+    // 7b) Remote acceleration seam (FR-AI-004) — disabled by default, egress-gated.
+    println!("\n[7b] Remote acceleration seam (FR-AI-004):");
+    let remote = Arc::new(
+        RemoteProvider::new("cloud-accel", kernel.egress_gate.clone())
+            .with_endpoint("https://api.example.com/v1/chat")
+            .with_sim_response("NOVA cloud: higher-capability reply (simulated)."),
+    );
+    ai.register_provider(remote.clone())?;
+    ai.models().set_active("cloud-accel")?;
+
+    // Disabled by default: routing to the seam refuses rather than leaking data.
+    let disabled_reply = match ai.chat("remote-demo", "hello from cloud?").await {
+        Ok(t) => t,
+        Err(e) => format!("refused: {e}"),
+    };
+    println!("     disabled    : {disabled_reply}");
+
+    // Grant consent for the exact endpoint (internet policy already set in [7]), then enable.
+    kernel.consent.grant(
+        RequestKind::Ai,
+        "https://api.example.com/v1/chat",
+        ConsentGrant::AlwaysAllow,
+    );
+    remote.enable();
+    let enabled_reply = ai.chat("remote-demo", "hello from cloud?").await?;
+    println!("     enabled     : {enabled_reply}");
+
+    // Disabling reverts to local-only immediately (no queued outbound calls).
+    remote.disable();
+    let reverted = match ai.chat("remote-demo", "hello from cloud?").await {
+        Ok(t) => t,
+        Err(e) => format!("refused: {e}"),
+    };
+    println!("     re-disabled : {reverted}");
+
+    // Restore the local mock as the active model for a clean post-condition.
+    ai.models().set_active("mock-local").ok();
+
     // 10) Tear down modules in reverse dependency order (Milestone 3), then the kernel.
     println!("\n[8] Shutting down modules (reverse order)...");
     kernel.registry.tear_down().await?;
@@ -244,7 +310,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     kernel.shutdown();
     println!("\n========================================");
-    println!(" Demo complete. Foundation + gates + module lifecycle work. Features come next.");
+    println!(" Demo complete. Foundation + gates + module lifecycle + offline AI inference work.");
     println!("========================================");
     Ok(())
 }

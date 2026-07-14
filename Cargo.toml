@@ -24,3 +24,8 @@ uuid = { version = "1.8", features = ["v4", "serde"] }
 async-trait = "0.1"
 parking_lot = "0.12"
 chrono = { version = "0.4", features = ["serde"] }
+candle-core = "0.8"
+candle-nn = "0.8"
+candle-transformers = "0.8"
+tokenizers = "0.20"
+hf-hub = "0.3"

@@ -125,19 +125,19 @@ retrieval over local indexed content.
 
 ---
 
-## Milestone 6 â€” AI Engine & Local Inference (NEXT)
+## Milestone 6 â€” AI Engine & Local Inference (COMPLETE)
 
 **Objective:** Implement the AI Engine with local LLM and embedding inference,
 uncertainty surfacing, and the consent-gated acceleration seam.
 
 **Deliverables:**
-- `InferenceRuntime` abstraction (ADR-0007)
-- Quantized local LLM backend (GGUF/llama.cpp)
-- ONNX embedding backend
-- Uncertainty surfacing (FR-AI-003)
-- Acceleration seam with Egress Gate integration (FR-AI-004)
-- Model lifecycle management
-- Latency benchmarks (NFR-PERF-002)
+- [x] `InferenceRuntime` abstraction (ADR-0007)
+- [x] Quantized local LLM backend (GGUF via CandleProvider)
+- [x] ONNX/BERT embedding backend (CandleEmbedder)
+- [x] Uncertainty surfacing (FR-AI-003)
+- [x] Acceleration seam with Egress Gate integration (FR-AI-004)
+- [x] Model lifecycle management (FR-AI-005)
+- [x] Latency/throughput/cold-warm/memory benchmarks (NFR-PERF-002)
 
 **Exit Criteria:**
 - Local inference works offline on minimum hardware tier

@@ -75,3 +75,76 @@ ova_backup_20260711` (Backup copy)
 
 ---
 *End of Transcript*
+
+---
+
+# Kiro-CLI Session — 2026-07-13
+
+## Agent
+**Kiro** (AI-powered development assistant, not Gemini)
+
+## Session Start State
+- M1–M5: All complete and verified.
+- All 110 tests passing. Clippy clean. Demo running.
+- Fixed stray clippy warning: `(i % 100) as i32` → `i % 100` in `semantic_and_perf_tests.rs`.
+
+---
+
+## M6 — AI Engine & Local Inference (IN PROGRESS)
+
+### Task #1 ✅ — Research llama.cpp Rust binding
+**Decision:** Use **Candle framework** (HuggingFace, pure Rust).
+- Rejected `llama-cpp-2`: requires C++ build / MSVC DLL (violates ADR-0007 no-fatal-dependencies).
+- Rejected `llm` (rustformers): stalled, no GGUF support.
+- Candle: pure Rust, supports quantized GGUF, BERT embeddings, actively maintained, Windows/MSVC clean.
+
+### Task #2 ✅ — Implement CandleProvider (GGUF LLM backend)
+**File:** `modules/ai/src/candle_provider.rs`
+- Implements `InferenceProvider` trait.
+- Loads GGUF model via `gguf_file::Content::read` + `ModelWeights::from_gguf`.
+- LLaMA-style prompt formatting (`[INST]`, `<<SYS>>` tags).
+- Streaming token-by-token generation with cancellation support.
+- Graceful `ERR_AI_MODEL_NOT_FOUND` error when model file missing (no panic).
+- Added Candle deps to workspace `Cargo.toml` + `modules/ai/Cargo.toml`.
+
+### Task #3 ✅ — Research ONNX Runtime binding
+**Decision:** Use Candle's built-in BERT model (already a dependency).
+- Rejected `ort` crate: requires ONNX Runtime native DLL (C++ external dependency).
+- `candle-transformers::models::bert::BertModel` — pure Rust, zero new deps.
+
+### Task #4 ✅ — Implement CandleEmbedder (BERT embeddings)
+**File:** `modules/ai/src/embedder.rs`
+- Loads safetensors weights + `config.json` + `tokenizer.json`.
+- `embed(text)` and `embed_batch(texts)` APIs.
+- Mean pooling over masked tokens (ignores padding).
+- L2 normalisation → unit vectors for cosine similarity.
+- `DEFAULT_EMBEDDING_DIM = 384` (all-MiniLM-L6-v2 compatible).
+- No new dependencies. Pure Rust.
+
+### Verification after Tasks #1–#4
+```
+cargo fmt --all -- --check      ✅
+cargo clippy -D warnings        ✅ (zero warnings)
+cargo test --workspace          ✅ 110/110 tests pass
+```
+
+---
+
+## Remaining M6 Tasks
+- [ ] #5 Uncertainty surfacing (FR-AI-003)
+- [ ] #6 RemoteProvider with Egress Gate (FR-AI-004)
+- [ ] #7 Model lifecycle management
+- [ ] #8 Comprehensive tests
+- [ ] #9 Latency benchmarks (NFR-PERF-002)
+- [ ] #10 Demo app update
+- [ ] #11 Full verification gate + docs update
+
+---
+
+## Modified Files (this session)
+- `Cargo.toml` — added candle-core, candle-nn, candle-transformers, tokenizers, hf-hub to workspace deps
+- `modules/ai/Cargo.toml` — added same deps
+- `modules/ai/src/candle_provider.rs` — NEW (CandleProvider)
+- `modules/ai/src/embedder.rs` — NEW (CandleEmbedder)
+- `modules/ai/src/lib.rs` — added module declarations + re-exports
+- `modules/search/tests/semantic_and_perf_tests.rs` — fixed clippy cast warning
