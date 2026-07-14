@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## [Unreleased] - Milestone 7 (Offline Voice System)
+
+### Added
+- **`nova_voice` module (`modules/voice`):** the offline-first voice subsystem, integrated as a
+  kernel `KernelModule` (`VoiceSystem`) that depends only on the AI Runtime through the Event Bus
+  (`ai:inference` request) — never touching memory/search directly (BRAIN §3, ADR-0004).
+- **Provider abstractions (`provider.rs`):** `AudioCaptureProvider`, `AudioOutputProvider`,
+  `VadProvider`, `WakeWordProvider`, `AsrProvider`, `TtsProvider`, `NoiseFilterProvider` traits
+  plus a `Cancellation` token. Whisper.cpp / Vosk / Sherpa-ONNX / Coqui / Piper / Silero /
+  Porcupine / future cloud engines plug in with no orchestration changes.
+- **Voice pipeline (`pipeline.rs`):** `capture → VAD → wake-word → ASR → AI → TTS → speaker`
+  with streaming ASR partials, cooperative cancellation, and barge-in (a new utterance cancels
+  the active response and emits `voice.interrupted`).
+- **Required event-bus events (`events.rs`):** `voice.wake_word_detected`, `voice.listening_started`,
+  `voice.listening_stopped`, `voice.speech_recognized`, `voice.speech_recognition_failed`,
+  `voice.ai_request_started`, `voice.response_started`, `voice.response_finished`,
+  `voice.tts_started`, `voice.tts_finished`, `voice.interrupted` — each mirrored to the Activity
+  Trail.
+- **Offline-default mock stack (`mock.rs`):** deterministic scripted capture/VAD/wake/ASR/TTS
+  providers so the whole pipeline runs with no microphone and no network (tests + demo default).
+- **Session manager (`session.rs`):** live per-session statistics (wake words, commands,
+  responses, interruptions, failures) gathered from the event stream.
+- **Config (`types.rs`):** `VoiceConfig` with default wake word `"NOVA"`, custom/multiple wake
+  words, always-on and push-to-talk modes, VAD threshold, noise filter toggle.
+- **Demo (`apps/nova-demo`, step `[4c]`):** prints the voice session outcome and shows the
+  pipeline stayed fully on-device.
+- **Tests (`modules/voice/tests/voice_tests.rs`):** offline-stack shape, full round-trip event
+  emission, custom wake word, microphone-permission-denied path, and provider swapping.
+
+### Privacy
+- Default is offline; no microphone audio is retained before the wake word, and remote speech
+  providers (future) must go through the Egress Gate + explicit consent.
+
+---
+
 ## [Unreleased] - Milestone 6 (AI Engine & Local Inference)
 
 ### Added

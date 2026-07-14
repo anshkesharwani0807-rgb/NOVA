@@ -97,3 +97,89 @@ cargo run -p nova_demo                              ✅ (local AI + confidence +
 - `modules/ai/tests/benchmarks.rs` (NEW, NFR-PERF-002)
 - `modules/search/tests/semantic_and_perf_tests.rs`
 - `apps/nova-demo/src/main.rs`
+
+---
+
+# Milestone 7 — Offline Voice System (COMPLETE) — session update 2026-07-14
+
+## Context (kyu kiya)
+Project NOVA hai: ek offline-first, privacy-first AI OS jisme mic se lekar AI tak sab kuch
+on-device chalta hai. M1–M6 already done hain (kernel, consent/egress, module registry,
+encrypted memory, search, AI engine). M7 = offline voice: wake-word → ASR → AI → TTS, bina
+mic/network ke chale (mock stack se). Voice AI Runtime se **sirf Event Bus** (`ai:inference`
+request) ke through baat karta hai — kabhi directly memory/search se nahi (BRAIN §3, ADR-0004).
+
+## Kya banaya (files)
+- `modules/voice/src/types.rs` — `AudioFrame`, `VoiceConfig` (default wake `"NOVA"`,
+  always-on / push-to-talk, VAD threshold, noise filter), enums (`SpeechState`, `ListeningMode`,
+  `VoicePermissionState`).
+- `modules/voice/src/provider.rs` — traits: `AudioCapture/Output/Vad/WakeWord/Asr/Tts/NoiseFilter`
+  + `Cancellation` token. Sab `Send + Sync` (zaroori taaki `Arc<dyn Trait>` `tokio::spawn` me
+  ja sake). Future engines (Whisper.cpp/Vosk/Sherpa-ONNX/Coqui/Piper/Silero/Porcupine/cloud)
+  inhi traits ke behind aayenge — orchestration nahi badlegi.
+- `modules/voice/src/mock.rs` — offline-default stack: scripted capture, energy VAD,
+  wake-word, streaming ASR, TTS, noise filter. `default_voice_stack()` + `build_voice_stack(...)`.
+  `MockAudioCapture::with_permission(...)` (permission-denied test ke liye).
+- `modules/voice/src/events.rs` — 11 required `voice.*` events (`wake_word_detected`,
+  `listening_started/stopped`, `speech_recognized`, `speech_recognition_failed`,
+  `ai_request_started`, `response_started/finished`, `tts_started/finished`, `interrupted`),
+  har ek Activity Trail me mirror hota hai.
+- `modules/voice/src/pipeline.rs` — `VoicePipeline`: capture→VAD→wake→ASR→AI(`ai:inference`
+  request)→TTS→speaker. Streaming ASR partials, cooperative cancellation, **barge-in**
+  (nayi utterance active response cancel karti hai → `voice.interrupted`).
+- `modules/voice/src/session.rs` — `VoiceSessionManager`: event stream se live stats
+  (wake words, commands, responses, interruptions, failures).
+- `modules/voice/src/lib.rs` — `VoiceSystem` `KernelModule` (deps `["ai"]`).
+- `modules/voice/tests/voice_tests.rs` — 5 tests: offline-stack shape, full round-trip events,
+  custom wake word, permission-denied, provider swap.
+- `apps/nova-demo/src/main.rs` — step `[4c]` voice session outcome dikhata hai.
+- `roadmap/ROADMAP.md` — M7 → COMPLETE.
+- `CHANGELOG.md` — M7 entry added.
+
+## Verification (saare 4 gates green)
+```
+cargo fmt --all                                      ✅
+cargo clippy --workspace --all-targets -- -D warnings ✅ (0)
+cargo test --workspace                               ✅ (nova_voice: 5 tests pass)
+cargo run -p nova_demo                              ✅ (wake=1, commands=1, responses=1)
+```
+
+## ⚠️ Important gotchas (doobara na phansna)
+- `subscribe()` koi pattern nahi leta — sab events deta hai; `voice.*` filter khud karo
+  (`ev.metadata.causing_action` me event type hota hai, `NovaEvent` me alag field nahi).
+- `RwLockReadGuard` (parking_lot) `!Send` hai → `.read().clone()` ko **hamesha** ek local
+  variable me bind karo **before** kisi `.await`, warna `tokio::spawn` future `!Send` fail karega.
+- `#[async_trait]` traits ke futures default `Send` hain, par `Arc<dyn Trait>` tabhi `Send` hai
+  jab trait `: Send + Sync` ho.
+- `Kernel` singleton hai (`OnceLock`) — tests me direct `Kernel { event_bus, consent,
+  egress_gate, registry, config_dir, log_dir }` bana lo (sab pub fields hain), `bootstrap`
+  mat call karo (global state clash se bachne ke liye).
+- Demo me `VoiceSystem::start()` internally `pipeline.run()` spawn karta hai; pipeline script
+  khatam hone ke baad `run()` return ho jata hai par spawned `handle_command` baad me chalta hai
+  — events buffered mil jate hain.
+
+## 🔁 Jab wapas aaye to yahan se shuru karo (resume)
+1. **Abhi kya state hai:** M1–M7 COMPLETE. Agla milestone `roadmap/ROADMAP.md` me dekho —
+   M8 = Android Shell, M9 = Windows Shell, M10 = Device Sync & Comms, M11 = Automation &
+   Plugin System, M12 = Security Hardening + v1.0.
+2. **Kaam shuru karne se pehle hamesha chalao:**
+   `cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace`
+   taaki kuch toota na ho.
+3. **Reference files** (inhi me se copy-paste karna, architecture mat badalna):
+   - Voice pipeline: `modules/voice/src/pipeline.rs`
+   - AI integration seam: `modules/ai/src/lib.rs` (`AIEngine`, `ai:inference` handler)
+   - Event bus pattern: `nova_ai/src/events.rs` (voice `events.rs` is copy of this)
+   - Kernel module lifecycle: `src/kernel/src/module.rs` (`KernelModule` trait),
+     `src/kernel/src/event_bus.rs`.
+4. **Privacy rule (kabhi mat todo):** voice/memory/search AI se direct couple na ho; sab kuch
+   Event Bus + ContextProvider/Tool seams se. Remote speech aane par Egress Gate + explicit
+   consent mandatory.
+5. **BRAIN.md** single source of truth hai — naya module banate waqt pehle wahi padho.
+
+## Modified Files (M7)
+- `modules/voice/Cargo.toml` (+ `uuid`/`serde_json`/`parking_lot`, `nova_ai` dev-dep for tests)
+- `modules/voice/src/{types,provider,mock,events,pipeline,session,lib}.rs` (NEW/rewritten)
+- `modules/voice/tests/voice_tests.rs` (NEW)
+- `apps/nova-demo/src/main.rs` (step `[4c]` added; kept `Arc<VoiceSystem>` handle)
+- `roadmap/ROADMAP.md` (M7 → COMPLETE)
+- `CHANGELOG.md` (M7 entry)

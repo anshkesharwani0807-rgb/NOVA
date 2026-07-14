@@ -7,5 +7,11 @@ edition = "2021"
 nova_kernel = { path = "../../src/kernel" }
 tokio = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
+parking_lot = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+nova_ai = { path = "../ai" }

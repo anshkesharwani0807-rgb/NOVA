@@ -73,9 +73,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .register(Arc::new(UniversalSearch::new(kernel.clone())))?;
     let ai = Arc::new(AIEngine::new(kernel.clone()));
     kernel.registry.register(ai.clone())?;
-    kernel
-        .registry
-        .register(Arc::new(VoiceSystem::new(kernel.clone())))?;
+    let voice = Arc::new(VoiceSystem::new(kernel.clone()));
+    kernel.registry.register(voice.clone())?;
     kernel
         .registry
         .register(Arc::new(DeviceComms::new(kernel.clone())))?;
@@ -204,6 +203,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .cloned()
         .unwrap_or_default();
     println!("     via bus    : {ai_text}");
+
+    // 6c) Voice System (Milestone 7 — offline-first voice pipeline).
+    println!("\n[4c] Voice System (Milestone 7 — offline pipeline: wake → ASR → AI → TTS):");
+    // The pipeline was started during module bring-up and runs the scripted offline source
+    // through the provider stack (mock capture/VAD/wake/ASR/TTS) into the AI Runtime over the
+    // bus — no microphone, no network. Give it a moment to finish the scripted turn.
+    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+    if let Some(session) = voice.session_manager() {
+        let snap = session.snapshot();
+        println!("     wake words detected : {}", snap.counters.wake_words);
+        println!(
+            "     commands recognized : {}",
+            snap.counters.commands_recognized
+        );
+        println!(
+            "     responses spoken    : {}",
+            snap.counters.responses_spoken
+        );
+        println!("     interruptions       : {}", snap.counters.interruptions);
+        println!(
+            "     recognition failures: {}",
+            snap.counters.recognition_failures
+        );
+        println!("     (all processing stayed on-device; see the activity trail for each event)");
+    }
 
     // Let the spawned async listeners flush their log lines.
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;

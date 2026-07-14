@@ -146,7 +146,7 @@ uncertainty surfacing, and the consent-gated acceleration seam.
 
 ---
 
-## Milestone 7 â€” Voice System (NEXT)
+## Milestone 7 â€” Voice System (COMPLETE)
 
 **Objective:** Implement wake-word detection, ASR, and TTS entirely on-device.
 
