@@ -1,10 +1,10 @@
-# AI_CONTEXT.md — live state of the NOVA Project (v0.17.0)
+# AI_CONTEXT.md — live state of the NOVA Project (v0.18.0)
 
 > Companion to `BRAIN.md` and `SESSION.md`. Read before making any changes.
 
-## Status: ALL MILESTONES 1–14 COMPLETE
+## Status: ALL MILESTONES 1–15 COMPLETE
 
-All M1–M14 requirements are implemented, tested, and all 4 verification gates green
+All M1–M15 requirements are implemented, tested, and all 4 verification gates green
 (`fmt` / `clippy -D warnings` / `test --workspace` / `run -p nova_demo`).
 
 ## Project structure overview
@@ -28,6 +28,21 @@ api/jni/             nova_jni — Android JNI bridge (16 entry points over FFI)
 apps/nova-demo/      nova_demo — CLI smoke test
 apps/nova-desktop/   nova_desktop — Windows desktop GUI (egui/eframe)
 ```
+
+## M15 — Knowledge Graph & Memory Intelligence (v0.2.0)
+- `nova_knowledge` crate now at v0.2.0 with 6 new modules: entity extraction, semantic index, reasoning, ranking, persistence, engine integration. All M11 API preserved (backward compatible).
+- `EntityExtractor` supports 11 entity types (Person, Place, Org, Device, Document, Website, Event, File, Image, Topic, Custom) from 10 sources.
+- `KnowledgeGraph` uses type-indexed adjacency with `KnowledgeRelationship` (weighted, timestamped, confidence, provenance).
+- `KnowledgeIndex` provides mock embedding + cosine similarity + type-filtered semantic search.
+- `KnowledgeReasoner` performs BFS path finding, graph expansion, dependency search, citation generation, and AI Runtime context building.
+- `CombinedRanker` weights recency + keyword + confidence + embedding scores (configurable via `RankWeights`).
+- `JsonFileStorage` persists graph + entities + index to JSON files (save/load round-trip verified).
+- 16 event payload types (`EntityCreated`, `EntityUpdated`, `EntityDeleted`, `RelationshipDeleted`, `KnowledgeIndexed`, `KnowledgeSearchCompleted`, `KnowledgeReasoningCompleted`, `KnowledgeFailed`, etc.) published to kernel event bus.
+- 182 knowledge tests (165 unit + 17 integration) all pass.
+- `storage_auto_save` and `storage_save_interval_ms` control persistence frequency.
+- Timeline generation: daily, weekly, monthly, project, conversation.
+- Summary generation: daily, conversation, project, cluster.
+- Recall query builder with time range and entity type filters.
 
 ## Key invariants (do not break)
 - Remote seam is **disabled by default**; every outbound attempt goes through `EgressGate::guard`.

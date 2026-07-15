@@ -128,3 +128,60 @@ impl SmartRecall {
         sq
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_recall_query_builder() {
+        let query = RecallQuery {
+            text: "rust project".into(),
+            time_range: None,
+            category_filter: None,
+            tag_filter: None,
+            max_results: 10,
+        };
+        assert_eq!(query.text, "rust project");
+        assert_eq!(query.max_results, 10);
+    }
+
+    #[test]
+    fn test_recall_query_with_filters() {
+        let query = RecallQuery {
+            text: "meeting".into(),
+            time_range: Some(TimeRange {
+                start: Some(1000),
+                end: Some(2000),
+            }),
+            category_filter: Some("Conversation".into()),
+            tag_filter: Some("work".into()),
+            max_results: 5,
+        };
+        assert!(query.time_range.is_some());
+        assert!(query.category_filter.is_some());
+        assert!(query.tag_filter.is_some());
+    }
+
+    #[test]
+    fn test_time_range_default() {
+        let tr = TimeRange {
+            start: None,
+            end: None,
+        };
+        assert!(tr.start.is_none());
+        assert!(tr.end.is_none());
+    }
+
+    #[test]
+    fn test_recall_result_empty() {
+        let result = RecallResult {
+            query: "test".into(),
+            results: vec![],
+            total_count: 0,
+            time_range: None,
+        };
+        assert_eq!(result.total_count, 0);
+        assert!(result.results.is_empty());
+    }
+}

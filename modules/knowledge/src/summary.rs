@@ -192,3 +192,96 @@ impl SummaryEngine {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nova_memory::{MemoryCategory, MemoryRecord};
+
+    fn make_record(content: &str, title: &str, importance: i32) -> MemoryRecord {
+        MemoryRecord::new(MemoryCategory::Knowledge, title, content).with_importance(importance)
+    }
+
+    #[test]
+    fn test_summarize_conversation() {
+        let engine = SummaryEngine::new(500);
+        let records = vec![make_record("Hello how are you?", "Alice", 5)];
+        let summary = engine.summarize_conversation(&records).unwrap();
+        assert_eq!(summary.summary_type, "conversation");
+        assert!(!summary.content.is_empty());
+    }
+
+    #[test]
+    fn test_summarize_conversation_empty() {
+        let engine = SummaryEngine::new(500);
+        let result = engine.summarize_conversation(&[]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_summarize_project() {
+        let engine = SummaryEngine::new(500);
+        let records = vec![
+            make_record("Implemented feature X", "Feature", 6),
+            make_record("Fixed bug Y", "Bug fix", 4),
+        ];
+        let summary = engine.summarize_project(&records, "Project Alpha").unwrap();
+        assert_eq!(summary.summary_type, "project");
+        assert!(summary.title.contains("Project Alpha"));
+    }
+
+    #[test]
+    fn test_summarize_project_empty() {
+        let engine = SummaryEngine::new(500);
+        let result = engine.summarize_project(&[], "Empty");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_summarize_daily() {
+        let engine = SummaryEngine::new(500);
+        let records = vec![
+            make_record("Meeting with team", "Meeting", 7),
+            make_record("Code review done", "Review", 5),
+        ];
+        let summary = engine.summarize_daily(&records, "2026-07-15").unwrap();
+        assert_eq!(summary.summary_type, "daily");
+    }
+
+    #[test]
+    fn test_summarize_daily_empty() {
+        let engine = SummaryEngine::new(500);
+        let result = engine.summarize_daily(&[], "today");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_summarize_cluster() {
+        let engine = SummaryEngine::new(500);
+        let records = vec![
+            make_record("First memory in cluster", "Mem1", 5),
+            make_record("Second memory in cluster", "Mem2", 3),
+        ];
+        let summary = engine.summarize_cluster(&records, "Test Cluster").unwrap();
+        assert_eq!(summary.summary_type, "cluster");
+    }
+
+    #[test]
+    fn test_truncate() {
+        let engine = SummaryEngine::new(10);
+        let short = engine.truncate("hello", 10);
+        assert_eq!(short, "hello");
+        let long = engine.truncate("hello world this is long", 10);
+        assert_eq!(long, "hello worl...");
+    }
+
+    #[test]
+    fn test_summary_serialization() {
+        let engine = SummaryEngine::new(500);
+        let records = vec![make_record("Test content", "Title", 5)];
+        let summary = engine.summarize_conversation(&records).unwrap();
+        let json = serde_json::to_string(&summary).unwrap();
+        let deserialized: Summary = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.summary_type, "conversation");
+    }
+}

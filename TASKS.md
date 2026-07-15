@@ -64,3 +64,20 @@
 - [x] All 4 verification gates green across workspace (0 clippy warnings, 0 fmt errors, all tests pass)
 - [x] Demo integration — vision module lifecycle, tools, permissions, analysis
 - [x] Documentation updated — AI_CONTEXT, SESSION, TASKS, ROADMAP, CHANGELOG, RELEASES
+
+## Milestone 15 — Knowledge Graph & Memory Intelligence
+- [x] Entity extraction (Person, Place, Org, Device, Document, Website, Event, File, Image, Topic, Custom) — `entity.rs`
+- [x] Knowledge graph with weighted/timestamped/confidence/provenance edges — `graph.rs`
+- [x] Semantic index with mock embedding + cosine similarity + type filtering — `index.rs`
+- [x] Reasoning layer (path finding, graph expansion, context building, citation generation) — `reasoning.rs`
+- [x] Ranking (CombinedRanker, RecencyRanker, configurable weights) — `ranking.rs`
+- [x] Storage (InMemoryStorage + JsonFileStorage with save/load graph + entities + index) — `storage.rs`
+- [x] Event integration (16 event payload types published to kernel event bus)
+- [x] Timeline generation (daily, weekly, monthly, project, conversation)
+- [x] Summary generation (daily, conversation, project, cluster)
+- [x] Recall query builder with time range/filters
+- [x] Engine integration (extract, index, search, reason, save/load, permissions)
+- [x] 182 knowledge tests (165 unit + 17 integration) all pass
+- [x] All 4 verification gates green across workspace (0 clippy warnings, 0 fmt errors)
+- [x] Demo integration — step [7e] Knowledge Engine section showing 10 entities, hybrid search, reasoning, persistence
+- [x] Documentation updated — AI_CONTEXT, SESSION, TASKS, ROADMAP, CHANGELOG, BRAIN

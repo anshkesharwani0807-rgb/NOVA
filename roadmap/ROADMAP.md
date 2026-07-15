@@ -342,42 +342,45 @@ information — offline-first, privacy-first, provider-abstracted, event-driven.
 
 ---
 
-## Milestone 15 — Plugin SDK & Extension Platform (COMPLETE)
+## Milestone 15 — Knowledge Graph & Memory Intelligence (COMPLETE)
 
-**Objective:** Make NOVA extensible without modifying core modules — plugin lifecycle,
-permission-gated sandbox, isolated storage, and event bus integration.
+**Objective:** Implement knowledge graph with entity extraction, semantic indexing,
+reasoning layer, ranking, persistence, and full engine integration — enabling NOVA
+to understand relationships between entities, perform graph-based reasoning, and
+generate timelines/summaries.
 
 **Deliverables:**
-- `nova_plugin_sdk` crate with 11 source files
-- `PluginManifest` — plugin_id, name, version, author, description, required_permissions,
-  capabilities, dependencies, min/max NOVA version with validation
-- `Plugin` trait — lifecycle callbacks: on_install, on_enable, on_disable, on_update,
-  on_reload, on_unload, health
-- `PluginRegistry` — CRUD for installed plugins with state tracking (Installed/Enabled/
-  Disabled/Unloaded/Error)
-- `PluginPermissionManager` — declare + grant + revoke + check permissions per plugin
-- `PluginSandbox` — validates actions against granted permissions, blocks storage access
-  outside plugin directory, blocks network without `internet.access` permission
-- `PluginLifecycleManager` — install/enable/disable/update/reload/unload/uninstall with
-  full state transitions
-- `PluginLoader` — register/unload/hot-reload + dependency resolution
-- `PluginContext` — per-plugin context with isolated storage + permission checks + config + logging
-- `PluginStorage` — in-memory and disk-based per-plugin data/config/cache isolation
-- `PluginEventPayload` — 9 event variants on event bus (Installed/Enabled/Disabled/Updated/
-  Removed/Crashed/PermissionDenied/Loaded/Unloaded)
-- `PluginManager` — high-level facade coordinating all sub-components
-- 49 unit tests + 11 integration tests = 60 tests total
-- Demo extension with HelloPlugin, MemoryPlugin (permission-gated), AutomationPlugin,
-  lifecycle transitions, storage isolation, sandbox enforcement, event bus verification
-- All 4 verification gates green
+- `entity.rs` — `KnowledgeEntity`, `EntityType` (11 types: Person, Place, Organization,
+  Device, Document, Website, Event, File, Image, Topic, Custom), `EntitySource`
+  (10 sources), `EntityExtractor` with `extract_from_text/memory/ocr/screenshot/
+  conversation/automation/plugin`
+- `graph.rs` — enhanced `KnowledgeRelationship` with `confidence`/`provenance`,
+  type-indexed adjacency, `upsert_entity`, `find_entity_by_name`,
+  `get_connected_entities_by_type`, `remove_entity`/`remove_relationship`
+- `index.rs` — `EmbeddingProvider` trait, `KnowledgeIndex` (semantic/hybrid search
+  with cosine similarity + keyword score + type filter), `MockEmbeddingProvider`
+- `reasoning.rs` — `KnowledgeReasoner` (BFS path finding, graph expansion,
+  dependency search, citation generation, AI Runtime context building)
+- `ranking.rs` — `CombinedRanker` (recency + keyword + confidence + embedding),
+  `RecencyRanker`, `RankWeights`
+- `storage.rs` — `KnowledgeStorage` trait, `JsonFileStorage` (persistence to JSON
+  files), `InMemoryStorage`
+- `engine.rs` — M15 impl block on `KnowledgeEngine` (entity extraction, graph
+  management, relationships, semantic indexing, reasoning, hybrid search,
+  persistence, permissions, event bus integration)
+- 16 event payload types published to kernel event bus
+- Timeline generation (daily, weekly, monthly, project, conversation)
+- Summary generation (daily, conversation, project, cluster)
+- Recall query builder with time range/filters
+- 182 knowledge tests (165 unit + 17 integration)
 
 **Exit Criteria:**
 - `cargo fmt --check` — clean
-- `cargo clippy -D warnings` — zero warnings
-- `cargo test --workspace` — all pass (nova_plugin_sdk: 49 unit + 11 integration)
-- `cargo run -p nova_demo` — [7d] demo section runs with plugin lifecycle, permissions,
-  storage, sandbox, and event bus
-- No M1-M12 regressions
+- `cargo clippy -D warnings` — zero warnings across workspace
+- `cargo test --workspace` — all pass (nova_knowledge: 182 tests)
+- `cargo run -p nova_demo` — [7e] demo section shows extraction → graph → index →
+  reason → persist round-trip
+- No M1-M14 regressions
 
 ---
 
@@ -390,4 +393,4 @@ permission-gated sandbox, isolated storage, and event bus integration.
 
 ---
 
-*Roadmap version: 1.0. All milestones M1-M14 exit criteria verified.*
+*Roadmap version: 1.1. All milestones M1-M15 exit criteria verified.*

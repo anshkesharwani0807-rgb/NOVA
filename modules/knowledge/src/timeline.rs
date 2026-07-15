@@ -217,3 +217,105 @@ impl TimelineGenerator {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Datelike;
+    use nova_memory::{MemoryCategory, MemoryRecord};
+
+    fn make_record(content: &str, title: &str, ts: i64) -> MemoryRecord {
+        let mut r = MemoryRecord::new(MemoryCategory::Knowledge, title, content);
+        r.created_at = ts;
+        r
+    }
+
+    #[test]
+    fn test_daily_timeline() {
+        let now = chrono::Utc::now().timestamp_millis();
+        let gen = TimelineGenerator::new(100);
+        let records = vec![
+            make_record("test1", "Title1", now),
+            make_record("test2", "Title2", now),
+        ];
+        let tl = gen.generate_daily(&records, now).unwrap();
+        assert_eq!(tl.granularity, "daily");
+        assert_eq!(tl.entries.len(), 2);
+    }
+
+    #[test]
+    fn test_daily_timeline_no_match() {
+        let now = chrono::Utc::now().timestamp_millis();
+        let gen = TimelineGenerator::new(100);
+        let records = vec![make_record("test", "Title", now - 86400000 * 2)];
+        let tl = gen.generate_daily(&records, now).unwrap();
+        assert!(tl.entries.is_empty());
+    }
+
+    #[test]
+    fn test_weekly_timeline() {
+        let now = chrono::Utc::now().timestamp_millis();
+        let gen = TimelineGenerator::new(100);
+        let records = vec![
+            make_record("test", "Title", now - 86400000),
+            make_record("test", "Title2", now),
+        ];
+        let tl = gen.generate_weekly(&records, now - 86400000 * 3).unwrap();
+        assert_eq!(tl.granularity, "weekly");
+    }
+
+    #[test]
+    fn test_monthly_timeline() {
+        let gen = TimelineGenerator::new(100);
+        let now = chrono::Utc::now();
+        let records = vec![make_record("test", "Title", now.timestamp_millis())];
+        let tl = gen
+            .generate_monthly(&records, now.year(), now.month())
+            .unwrap();
+        assert_eq!(tl.granularity, "monthly");
+        assert_eq!(tl.entries.len(), 1);
+    }
+
+    #[test]
+    fn test_project_timeline() {
+        let gen = TimelineGenerator::new(100);
+        let now = chrono::Utc::now().timestamp_millis();
+        let records = vec![
+            make_record("Working on NOVA project", "NOVA update", now),
+            make_record("Something else", "Other", now),
+        ];
+        let tl = gen.generate_project_timeline(&records, "NOVA").unwrap();
+        assert_eq!(tl.granularity, "project");
+        assert_eq!(tl.entries.len(), 1);
+    }
+
+    #[test]
+    fn test_project_timeline_no_match() {
+        let gen = TimelineGenerator::new(100);
+        let records = vec![make_record("Hello world", "Title", 1000)];
+        let result = gen.generate_project_timeline(&records, "NOVA");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_conversation_timeline() {
+        let gen = TimelineGenerator::new(100);
+        let now = chrono::Utc::now().timestamp_millis();
+        let mut r = make_record("Hello", "Chat", now);
+        r.category = MemoryCategory::Custom;
+        let records = vec![r];
+        let result = gen.generate_conversation_timeline(&records);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_timeline_max_entries() {
+        let gen = TimelineGenerator::new(2);
+        let now = chrono::Utc::now().timestamp_millis();
+        let records: Vec<MemoryRecord> = (0..5)
+            .map(|i| make_record(&format!("test{}", i), &format!("Title{}", i), now))
+            .collect();
+        let tl = gen.generate_daily(&records, now).unwrap();
+        assert!(tl.entries.len() <= 2);
+    }
+}

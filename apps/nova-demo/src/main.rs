@@ -16,7 +16,7 @@ use nova_kernel::{
     get_config, get_recent_activity, get_recent_egress, ConsentGrant, EgressPolicy, EgressRequest,
     EventMetadata, Kernel, NovaEvent, RequestKind,
 };
-use nova_knowledge::KnowledgeEngine;
+use nova_knowledge::{EntitySource, EntityType, KnowledgeEngine};
 use nova_memory::{MemoryCategory, MemoryEngine, MemoryRecord, Query, SortBy};
 use nova_plugin_host::PluginHost;
 use nova_plugin_sdk::{Plugin, PluginContext, PluginManager, PluginManifest};
@@ -610,6 +610,140 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("     sandbox        : memory.write={:?}", sandbox.is_ok());
     let network = plugin_mgr.check_network("memory_reader");
     println!("     network        : blocked={:?}", network.is_err());
+
+    // 7e) Knowledge Engine — M15 (Entity extraction + graph + index + reasoning + persistence).
+    println!(
+        "\n[7e] Knowledge Engine — M15 (Entity extraction + index + reasoning + persistence):"
+    );
+
+    // Entity extraction from natural language text.
+    let text = "Alice is working on a Rust project with Bob at Acme Corp. \
+                 They are designing a new feature for document security and privacy. \
+                 The project was discussed at the headquarters.";
+    let entities =
+        knowledge.extract_entities_from_text(text, "demo chat", EntitySource::Conversation);
+    println!("     extracted {} entities from text:", entities.len());
+    for e in &entities {
+        println!(
+            "       - {:<12} ({}) conf={:.1}",
+            e.name, e.entity_type, e.confidence
+        );
+    }
+
+    // Add entities into the knowledge graph.
+    for e in &entities {
+        knowledge.add_entity_to_graph(e.clone()).unwrap();
+    }
+
+    // Add relationships using entity IDs (look up by name first).
+    let alice = knowledge.get_entity_by_name("Alice");
+    let bob = knowledge.get_entity_by_name("Bob");
+    let rust = knowledge.get_entity_by_name("Rust");
+
+    if let (Some(a), Some(b)) = (&alice, &bob) {
+        knowledge
+            .add_relationship(&a.id, &b.id, "colleague", 0.8, "demo")
+            .unwrap();
+        println!("       relation   : Alice --colleague--> Bob");
+    }
+    if let (Some(a), Some(r)) = (&alice, &rust) {
+        knowledge
+            .add_relationship(&a.id, &r.id, "uses", 0.9, "demo")
+            .unwrap();
+        println!("       relation   : Alice --uses--> Rust");
+    }
+
+    {
+        let graph = knowledge.get_graph();
+        println!(
+            "     graph        : {} entities, {} relationships",
+            graph.all_entities().len(),
+            graph.all_relationships().len()
+        );
+    }
+
+    // Index entities for semantic search.
+    for e in &entities {
+        knowledge.index_entity_for_search(e).await.unwrap();
+    }
+
+    // Hybrid search — combines semantic + keyword matching.
+    let results = knowledge
+        .hybrid_search("Rust programming language", 5)
+        .await
+        .unwrap();
+    println!(
+        "     hybrid search: {} result(s) for 'Rust programming'",
+        results.len()
+    );
+    for r in &results {
+        println!("       - {:<12} score={:.2}", r.name, r.score);
+    }
+
+    // Type-filtered semantic search.
+    let people = knowledge
+        .semantic_search("Alice", 5, Some(EntityType::Person))
+        .await
+        .unwrap();
+    println!("     person search: {} result(s)", people.len());
+
+    // Path finding between entities.
+    let paths = if let Some(a) = &alice {
+        if let Some(r) = &rust {
+            knowledge.find_paths(&a.id, &r.id, 3).unwrap()
+        } else {
+            vec![]
+        }
+    } else {
+        vec![]
+    };
+    println!(
+        "     path finding : {} path(s) from Alice → Rust",
+        paths.len()
+    );
+    for (i, p) in paths.iter().enumerate() {
+        let nodes: Vec<&str> = p.path.iter().map(|n| n.entity_name.as_str()).collect();
+        println!("       path {}: {}", i + 1, nodes.join(" → "));
+    }
+
+    // Context for AI Runtime injection.
+    let ctx = knowledge.build_knowledge_context("Rust project", 5);
+    println!(
+        "     context      : {} citations, {} relations",
+        ctx.citations.len(),
+        ctx.relationships.len()
+    );
+
+    // Full reasoning over the graph.
+    let alice_id = alice.as_ref().map(|e| e.id.clone()).unwrap_or_default();
+    let reason = knowledge.reason("Rust ecosystem", &[alice_id], 3).unwrap();
+    println!(
+        "     full reason  : {} path(s), {} citation(s)",
+        reason.paths.len(),
+        reason.citations.len()
+    );
+
+    // Persistence — save & restore round-trip.
+    let storage_dir = base.join("knowledge_storage");
+    std::fs::create_dir_all(&storage_dir).unwrap();
+    knowledge.set_storage(Arc::new(nova_knowledge::JsonFileStorage::new(&storage_dir)));
+    knowledge.save().await.unwrap();
+    println!("     persistence  : saved to {}", storage_dir.display());
+
+    let restored = KnowledgeEngine::new();
+    restored.set_storage(Arc::new(nova_knowledge::JsonFileStorage::new(&storage_dir)));
+    restored.load().await.unwrap();
+    let restored_entity_count;
+    let restored_rel_count;
+    {
+        let rg = restored.get_graph();
+        restored_entity_count = rg.all_entities().len();
+        restored_rel_count = rg.all_relationships().len();
+    }
+    println!(
+        "     restored     : {} entities, {} relationships",
+        restored_entity_count, restored_rel_count
+    );
 
     // 10) Tear down modules in reverse dependency order (Milestone 3), then the kernel.
     println!("\n[8] Shutting down modules (reverse order)...");

@@ -1,5 +1,52 @@
 # CHANGELOG
 
+## [0.18.0] - 2026-07-15 — Knowledge Graph & Memory Intelligence
+
+### Added (M15 — nova_knowledge v0.2.0)
+- **Entity extraction system** (`entity.rs`) — `KnowledgeEntity`, `EntityType` (11 types),
+  `EntitySource` (10 sources), `EntityExtractor` with `extract_from_text/memory/ocr/
+  screenshot/conversation/automation/plugin`. 26 common names for person detection,
+  topic extraction, memory-based entity discovery.
+- **Semantic index** (`index.rs`) — `EmbeddingProvider` trait, `KnowledgeIndex` with
+  cosine similarity + keyword score + type-filtered hybrid search, `MockEmbeddingProvider`
+  (deterministic 384-dim vectors).
+- **Reasoning layer** (`reasoning.rs`) — `KnowledgeReasoner` with BFS path finding
+  (configurable max depth), graph expansion, dependency search, citation generation,
+  `KnowledgeContext` builder for AI Runtime integration.
+- **Ranking** (`ranking.rs`) — `CombinedRanker`, `RecencyRanker`, `RankWeights`
+  (configurable recency/keyword/confidence/embedding weights).
+- **Persistence** (`storage.rs`) — `KnowledgeStorage` trait, `InMemoryStorage`,
+  `JsonFileStorage` with save/load round-trip for graph + entities + index.
+- **Engine integration** (`engine.rs`) — M15 impl block on `KnowledgeEngine`: entity
+  extraction, graph CRUD, relationship management, semantic indexing, hybrid search,
+  reasoning, persistence triggers, permission checks, event bus publishing.
+- **16 event payload types** — `EntityCreated`, `EntityUpdated`, `EntityDeleted`,
+  `RelationshipDeleted`, `KnowledgeIndexed`, `KnowledgeSearchCompleted`,
+  `KnowledgeReasoningCompleted`, `KnowledgeFailed` (plus M11 events).
+- **Timeline generation** — daily, weekly, monthly, project, conversation.
+- **Summary generation** — daily, conversation, project, cluster.
+- **Recall query builder** — time range + entity type + keyword filters.
+- **182 knowledge tests** (165 unit + 17 integration) — entity (15), graph (17),
+  index (9), ranking (8), reasoning (12), storage (6), integration (115+).
+- **Demo extension** — `apps/nova-demo` step `[7e]` showing extraction → graph →
+  index → reason → persist with 10 entities, hybrid search, path finding, citations.
+
+### Changed
+- `modules/knowledge/Cargo.toml` — v0.2.0, optional `nova_vision` dependency
+- `modules/knowledge/src/graph.rs` — enhanced `KnowledgeRelationship` with confidence/provenance,
+  type-indexed adjacency, `upsert_entity`, `find_entity_by_name`
+- `modules/knowledge/src/events.rs` — 6 new event variants (16 total)
+- `modules/knowledge/src/error.rs` — 7 new error variants
+- `modules/knowledge/src/config.rs` — 8 new config fields
+- `modules/knowledge/src/lib.rs` — re-exports new modules, `embedder`/`index`/`storage` fields
+
+### Build
+- All 4 verification gates green across the entire workspace
+- 0 fmt errors, 0 clippy warnings (`-D warnings`), all 182 knowledge tests pass
+- `cargo run -p nova_demo` — [7e] Knowledge Engine section runs successfully
+
+---
+
 ## [0.17.0] - 2026-07-14 — Vision Engine Finalization
 
 ### Added

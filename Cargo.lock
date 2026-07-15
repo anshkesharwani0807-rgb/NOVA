@@ -3639,13 +3639,14 @@ dependencies = [
 
 [[package]]
 name = "nova_knowledge"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "chrono",
  "nova_kernel",
  "nova_memory",
  "nova_search",
+ "nova_vision",
  "parking_lot",
  "rusqlite",
  "serde",

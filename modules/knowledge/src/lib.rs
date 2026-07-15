@@ -1,20 +1,34 @@
 mod analysis;
 mod config;
+mod engine;
+mod entity;
 mod error;
 mod events;
 mod graph;
+mod index;
+mod ranking;
+mod reasoning;
 mod recall;
 mod relationship;
+mod storage;
 mod summary;
 mod timeline;
 
 pub use analysis::{AnalyzedMemory, ExtractedEntity, MemoryAnalyzer};
 pub use config::KnowledgeConfig;
+pub use engine::{
+    PERM_KNOWLEDGE_INDEX, PERM_KNOWLEDGE_READ, PERM_KNOWLEDGE_REASON, PERM_KNOWLEDGE_WRITE,
+};
+pub use entity::{EntityExtractor, EntitySource, EntityType, KnowledgeEntity};
 pub use error::KnowledgeError;
 pub use events::KnowledgeEventPayload;
-pub use graph::{GraphEntity, KnowledgeGraph, Relationship};
+pub use graph::{GraphEntity, KnowledgeGraph, KnowledgeRelationship};
+pub use index::{EmbeddingProvider, KnowledgeIndex, MockEmbeddingProvider};
+pub use ranking::{CombinedRanker, RankWeights, RankedResult, Ranker, RecencyRanker};
+pub use reasoning::{KnowledgeContext, KnowledgeReasoner, PathResult, ReasoningResult};
 pub use recall::{RecallQuery, RecallResult, SmartRecall};
 pub use relationship::RelationshipEngine;
+pub use storage::{InMemoryStorage, JsonFileStorage, KnowledgeStorage};
 pub use summary::{Summary, SummaryEngine};
 pub use timeline::{Timeline, TimelineEntry, TimelineGenerator};
 
@@ -23,19 +37,22 @@ use nova_kernel::{log_activity, EventBus, EventMetadata, NovaError, NovaEvent, R
 use std::sync::Arc;
 
 pub struct KnowledgeEngine {
-    inner: Arc<KnowledgeInner>,
+    pub(crate) inner: Arc<KnowledgeInner>,
 }
 
-struct KnowledgeInner {
-    config: parking_lot::RwLock<KnowledgeConfig>,
-    analyzer: parking_lot::RwLock<MemoryAnalyzer>,
-    graph: parking_lot::RwLock<KnowledgeGraph>,
-    relationship_engine: RelationshipEngine,
-    timeline_gen: parking_lot::RwLock<TimelineGenerator>,
-    summary_engine: parking_lot::RwLock<SummaryEngine>,
-    memory: std::sync::Mutex<Option<Arc<nova_memory::MemoryEngine>>>,
-    search: std::sync::Mutex<Option<Arc<nova_search::UniversalSearch>>>,
-    event_bus: std::sync::Mutex<Option<Arc<EventBus>>>,
+pub(crate) struct KnowledgeInner {
+    pub config: parking_lot::RwLock<KnowledgeConfig>,
+    pub analyzer: parking_lot::RwLock<MemoryAnalyzer>,
+    pub graph: parking_lot::RwLock<KnowledgeGraph>,
+    pub relationship_engine: RelationshipEngine,
+    pub timeline_gen: parking_lot::RwLock<TimelineGenerator>,
+    pub summary_engine: parking_lot::RwLock<SummaryEngine>,
+    pub memory: std::sync::Mutex<Option<Arc<nova_memory::MemoryEngine>>>,
+    pub search: std::sync::Mutex<Option<Arc<nova_search::UniversalSearch>>>,
+    pub event_bus: std::sync::Mutex<Option<Arc<EventBus>>>,
+    pub embedder: parking_lot::RwLock<Option<Arc<dyn EmbeddingProvider>>>,
+    pub index: parking_lot::RwLock<Option<Arc<KnowledgeIndex>>>,
+    pub storage: parking_lot::RwLock<Option<Arc<dyn KnowledgeStorage>>>,
 }
 
 impl Default for KnowledgeEngine {
@@ -60,6 +77,9 @@ impl KnowledgeEngine {
                 memory: std::sync::Mutex::new(None),
                 search: std::sync::Mutex::new(None),
                 event_bus: std::sync::Mutex::new(None),
+                embedder: parking_lot::RwLock::new(None),
+                index: parking_lot::RwLock::new(None),
+                storage: parking_lot::RwLock::new(Some(Arc::new(InMemoryStorage::new()))),
             }),
         }
     }
@@ -73,6 +93,12 @@ impl KnowledgeEngine {
     pub fn set_search(&self, search: Arc<nova_search::UniversalSearch>) {
         if let Ok(mut s) = self.inner.search.lock() {
             *s = Some(search);
+        }
+    }
+
+    pub fn set_event_bus(&self, bus: Arc<EventBus>) {
+        if let Ok(mut e) = self.inner.event_bus.lock() {
+            *e = Some(bus);
         }
     }
 
@@ -140,7 +166,7 @@ impl KnowledgeEngine {
             })
     }
 
-    fn publish(&self, payload: KnowledgeEventPayload) {
+    pub(crate) fn publish(&self, payload: KnowledgeEventPayload) {
         if let Ok(bus) = self.event_bus() {
             let meta = EventMetadata::new("knowledge", None);
             let event = NovaEvent {
@@ -164,26 +190,31 @@ impl KnowledgeEngine {
 
         let mut graph = self.inner.graph.write();
         for entity in &analyzed.entities {
-            let entity_type = match entity.entity_type {
-                crate::analysis::EntityType::Person => graph::EntityType::Person,
-                crate::analysis::EntityType::Place => graph::EntityType::Place,
-                crate::analysis::EntityType::Project => graph::EntityType::Project,
-                crate::analysis::EntityType::Document => graph::EntityType::Document,
-                crate::analysis::EntityType::Conversation => graph::EntityType::Conversation,
-                crate::analysis::EntityType::Task => graph::EntityType::Task,
-                crate::analysis::EntityType::Idea => graph::EntityType::Idea,
-                crate::analysis::EntityType::Technology => graph::EntityType::Technology,
-                crate::analysis::EntityType::Unknown => graph::EntityType::Unknown,
-            };
+            let entity_type = crate::entity::EntityType::Custom(
+                match entity.entity_type {
+                    crate::analysis::EntityType::Person => "person",
+                    crate::analysis::EntityType::Place => "place",
+                    crate::analysis::EntityType::Project => "project",
+                    crate::analysis::EntityType::Document => "document",
+                    crate::analysis::EntityType::Conversation => "conversation",
+                    crate::analysis::EntityType::Task => "task",
+                    crate::analysis::EntityType::Idea => "idea",
+                    crate::analysis::EntityType::Technology => "technology",
+                    crate::analysis::EntityType::Unknown => "unknown",
+                }
+                .to_string(),
+            );
             if graph.find_entity_by_name(&entity.name).is_none() {
                 let ge = GraphEntity {
                     id: uuid::Uuid::new_v4().to_string(),
                     name: entity.name.clone(),
                     entity_type,
                     description: String::new(),
+                    aliases: vec![],
                     first_seen: record.created_at,
                     last_seen: record.created_at,
                     mention_count: 1,
+                    confidence: entity.confidence,
                     metadata: std::collections::HashMap::new(),
                 };
                 let _ = graph.add_entity(ge);
@@ -194,7 +225,19 @@ impl KnowledgeEngine {
         let entities: Vec<crate::analysis::ExtractedEntity> = analyzed.entities.clone();
         let rels = rel_engine.detect_relationships(&entities, &graph);
         for rel in rels {
-            let _ = graph.add_relationship(rel);
+            let kg_rel = KnowledgeRelationship {
+                id: rel.id,
+                source_id: rel.source_id,
+                target_id: rel.target_id,
+                relationship_type: rel.relationship_type,
+                strength: rel.strength,
+                confidence: 0.8,
+                first_seen: rel.first_seen,
+                last_seen: rel.last_seen,
+                provenance: "analysis".to_string(),
+                metadata: rel.metadata,
+            };
+            let _ = graph.add_relationship(kg_rel);
         }
         drop(graph);
 

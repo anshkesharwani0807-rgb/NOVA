@@ -280,3 +280,181 @@ impl MemoryAnalyzer {
         links
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nova_memory::{MemoryCategory, MemoryRecord};
+
+    fn make_record(content: &str, title: &str, category: MemoryCategory) -> MemoryRecord {
+        MemoryRecord::new(category, title, content)
+    }
+
+    #[test]
+    fn test_analyze_basic() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let record = make_record(
+            "Working on Rust project",
+            "Project Update",
+            MemoryCategory::Custom,
+        );
+        let result = analyzer.analyze(&record).unwrap();
+        assert_eq!(result.category, "Project");
+        assert!(!result.tags.is_empty());
+        assert!(result.tags.contains(&"rust".to_string()));
+    }
+
+    #[test]
+    fn test_analyze_reminder() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let record = make_record("Remember to buy milk", "Reminder", MemoryCategory::Custom);
+        let result = analyzer.analyze(&record).unwrap();
+        assert_eq!(result.category, "Reminder");
+    }
+
+    #[test]
+    fn test_analyze_conversation() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let record = make_record("Alice said hello", "Chat", MemoryCategory::Custom);
+        let result = analyzer.analyze(&record).unwrap();
+        assert_eq!(result.category, "Conversation");
+    }
+
+    #[test]
+    fn test_analyze_idea() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let record = make_record("What if we could do this?", "Idea", MemoryCategory::Custom);
+        let result = analyzer.analyze(&record).unwrap();
+        assert_eq!(result.category, "Idea");
+    }
+
+    #[test]
+    fn test_analyze_gallery() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let record = make_record(
+            "Beautiful photo from the trip",
+            "Photo",
+            MemoryCategory::Custom,
+        );
+        let result = analyzer.analyze(&record).unwrap();
+        assert_eq!(result.category, "Gallery");
+    }
+
+    #[test]
+    fn test_analyze_existing_category_preserved() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let record = make_record("Some content", "Title", MemoryCategory::Reminder);
+        let result = analyzer.analyze(&record).unwrap();
+        assert_eq!(result.category, "Reminder");
+    }
+
+    #[test]
+    fn test_extract_entities_from_memory() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let record = make_record("NOVA is built with Rust", "Project", MemoryCategory::Custom);
+        let result = analyzer.analyze(&record).unwrap();
+        assert!(result.entities.iter().any(|e| e.name == "NOVA"));
+    }
+
+    #[test]
+    fn test_detect_duplicates_no_records() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let dups = analyzer.detect_duplicates(&[]);
+        assert!(dups.is_empty());
+    }
+
+    #[test]
+    fn test_detect_duplicates_exact_match() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let records = vec![
+            make_record("hello world", "Title", MemoryCategory::Knowledge),
+            make_record("hello world", "Title", MemoryCategory::Knowledge),
+        ];
+        let dups = analyzer.detect_duplicates(&records);
+        assert!(!dups.is_empty());
+    }
+
+    #[test]
+    fn test_suggest_links_shared_tags() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let mut r1 = make_record("content", "Title1", MemoryCategory::Knowledge);
+        r1.tags = vec!["rust".into()];
+        let mut r2 = make_record("content", "Title2", MemoryCategory::Knowledge);
+        r2.tags = vec!["rust".into()];
+        let links = analyzer.suggest_links(&[r1, r2]);
+        assert!(!links.is_empty());
+    }
+
+    #[test]
+    fn test_suggest_links_empty() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let r1 = make_record("alpha", "Title1", MemoryCategory::Knowledge);
+        let r2 = make_record("beta", "Title2", MemoryCategory::Knowledge);
+        let links = analyzer.suggest_links(&[r1, r2]);
+        assert!(links.is_empty());
+    }
+
+    #[test]
+    fn test_importance_scoring() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let record = make_record(
+            "A very long content that should get a high importance score because it has many details",
+            "Important Project Update with Details",
+            MemoryCategory::Custom,
+        );
+        let result = analyzer.analyze(&record).unwrap();
+        assert!(result.importance > 0);
+    }
+
+    #[test]
+    fn test_importance_preserved() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let mut record = make_record("content", "title", MemoryCategory::Knowledge);
+        record.importance = 10;
+        let result = analyzer.analyze(&record).unwrap();
+        assert_eq!(result.importance, 10);
+    }
+
+    #[test]
+    fn test_tag_extraction_from_hashtags() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let record = make_record(
+            "Working on #rust and #python",
+            "Dev",
+            MemoryCategory::Custom,
+        );
+        let result = analyzer.analyze(&record).unwrap();
+        assert!(result.tags.contains(&"rust".to_string()));
+        assert!(result.tags.contains(&"python".to_string()));
+    }
+
+    #[test]
+    fn test_text_similarity_identical() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let sim = analyzer.text_similarity("hello world", "hello world");
+        assert!((sim - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_text_similarity_empty() {
+        let config = KnowledgeConfig::default();
+        let analyzer = MemoryAnalyzer::new(config);
+        let sim = analyzer.text_similarity("", "");
+        assert!((sim - 1.0).abs() < 0.01);
+    }
+}

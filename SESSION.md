@@ -1,3 +1,65 @@
+# Session Summary - 2026-07-14 (M15 Knowledge Graph & Memory Intelligence)
+
+## Agent
+**Kiro** (AI-powered development assistant)
+
+## Progress Made
+
+### M15 — Knowledge Graph & Memory Intelligence (COMPLETE)
+
+Extended `nova_knowledge` v0.2.0 with 6 new modules: entity extraction, semantic index, reasoning, ranking, persistence, and engine integration. All existing M11 API preserved with backward compatibility.
+
+### What was built (7 new source files + 5 enhanced)
+
+**New modules:**
+- `entity.rs` — `KnowledgeEntity`, `EntityType` (11 types: Person, Place, Organization, Device, Document, Website, Event, File, Image, Topic, Custom), `EntitySource` (10 sources: Memory, Note, Ocr, Screenshot, Conversation, Automation, Plugin, Vision, Manual, Import), `EntityExtractor` with `extract_from_text/memory/ocr/screenshot/conversation/automation/plugin`. **Fixes**: `known_names` populated with 26 common names; `extract_persons()` returns `Vec` (finds all known name matches), `extract_topics()` returns all matching topics.
+- `ranking.rs` — `RankedResult`, `CombinedRanker` (recency + keyword + confidence + embedding), `RecencyRanker`, `RankWeights`
+- `index.rs` — `EmbeddingProvider` trait, `KnowledgeIndex` (semantic/hybrid search with cosine similarity + keyword score + type filter), `MockEmbeddingProvider`
+- `reasoning.rs` — `PathResult`, `PathNode`, `ReasoningResult`, `KnowledgeContext`, `KnowledgeReasoner` (BFS path finding, graph expansion, dependency search, citation generation, context building for AI Runtime)
+- `storage.rs` — `KnowledgeStorage` trait, `JsonFileStorage` (persistence to JSON files), `InMemoryStorage`
+- `engine.rs` — M15 impl block on existing `KnowledgeEngine` (entity extraction, graph management, relationships, semantic indexing, reasoning, hybrid search, persistence, permissions, event bus integration)
+
+**Enhanced existing modules:**
+- `graph.rs` — `KnowledgeRelationship` with `confidence`/`provenance`, type-indexed adjacency, `upsert_entity`, `find_entity_by_name`, `get_connected_entities_by_type`, `remove_entity`/`remove_relationship`
+- `relationship.rs` — updated to use `KnowledgeRelationship`
+- `events.rs` — 8 new variants (16 total): `EntityCreated`, `EntityUpdated`, `EntityDeleted`, `RelationshipCreated`, `RelationshipDeleted`, `KnowledgeIndexed`, `KnowledgeSearchCompleted`, `KnowledgeReasoningCompleted`, `KnowledgeFailed`, `TimelineGenerated`, `SummaryGenerated`, `EntityExtracted`, `EntityLinked`, `EntityResolved`, `GraphExpanded`, `KnowledgeSaved`
+- `error.rs` — 7 new variants: `EntityAlreadyExists`, `IndexError`, `ReasoningError`, `EmbeddingError`, `SerializationError`, `PermissionDenied`, `ExtractionFailed`, `NoPathFound`
+- `config.rs` — 8 new fields: `graph_max_entities`, `index_batch_size`, `enable_reasoning`, `enable_semantic_index`, `storage_auto_save`, `storage_save_interval_ms`, `max_path_depth`, `max_context_fragments`
+- `lib.rs` — re-exports all new modules, adds `embedder`/`index`/`storage` fields to `KnowledgeInner`
+
+### Demo extension
+- `apps/nova-demo/src/main.rs` — step `[7e]` showing: entity extraction from text, graph population, relationships, hybrid search, type-filtered semantic search, path finding, AI Runtime context building, full reasoning with citations, JSON persistence save/load round-trip
+
+### Tests (182 total — 165 unit + 17 integration)
+- All 182 knowledge tests pass across 6 test modules: entity (15), graph (17), index (9), ranking (8), reasoning (12), storage (6), integration (115+)
+- Fixed 3 test bugs: entity extraction (known_names + extract_persons), mock embedder determinism, self-path error on source==target
+
+### Verification (all 4 gates green)
+```
+cargo fmt --all -- --check                           ✅ (0 changes)
+cargo clippy --workspace --all-targets -- -D warnings ✅ (0 warnings)
+cargo test --workspace                               ✅ (nova_knowledge: 182 tests = 165 unit + 17 integration)
+cargo run -p nova_demo                              ✅ ([7e] Knowledge Engine: 10 entities, hybrid search, reasoning, persistence)
+```
+
+## Modified Files
+- `modules/knowledge/src/entity.rs` (NEW — entity extraction system)
+- `modules/knowledge/src/ranking.rs` (NEW — combined ranking)
+- `modules/knowledge/src/index.rs` (NEW — semantic index)
+- `modules/knowledge/src/reasoning.rs` (NEW — graph reasoning)
+- `modules/knowledge/src/storage.rs` (NEW — persistence)
+- `modules/knowledge/src/engine.rs` (NEW — M15 impl block)
+- `modules/knowledge/src/graph.rs` (enhanced — KnowledgeRelationship, type-indexed)
+- `modules/knowledge/src/relationship.rs` (updated types)
+- `modules/knowledge/src/events.rs` (6 new variants)
+- `modules/knowledge/src/error.rs` (7 new variants)
+- `modules/knowledge/src/config.rs` (8 new fields)
+- `modules/knowledge/src/lib.rs` (re-exports, new fields)
+- `modules/knowledge/Cargo.toml` (v0.2.0, optional nova_vision)
+- `apps/nova-demo/src/main.rs` (step [7e] M15 demo)
+
+---
+
 # Session Summary - 2026-07-14 (M14 Vision Engine Finalization)
 
 ## Agent
