@@ -81,3 +81,34 @@
 - [x] All 4 verification gates green across workspace (0 clippy warnings, 0 fmt errors)
 - [x] Demo integration — step [7e] Knowledge Engine section showing 10 entities, hybrid search, reasoning, persistence
 - [x] Documentation updated — AI_CONTEXT, SESSION, TASKS, ROADMAP, CHANGELOG, BRAIN
+
+## Milestone 16 — Cross-Device Platform (v0.19.0)
+- [x] `nova_cross_device` crate — `CrossDeviceCoordinator`, `DeviceManager`, `SessionManager`,
+  `PlatformAdapter` trait (Windows/Android), `UnifiedCommandIntent`, per-device permission
+  profiles, E2E encrypted file transfer, `RemoteCapabilityProvider` for plugin SDK
+- [x] `nova_windows_agent` crate — 17 `WindowsCapability` variants, `WindowsCapabilityProvider`
+  trait (`MockWindowsProvider` + `RealWindowsProvider`), `WindowsAgent` (`KernelModule`)
+- [x] `nova_transport` crate — TCP transport, bincode packet, Zlib compression, AES-256-GCM
+  encryption, heartbeat, reconnection, UDP multicast local discovery
+- [x] `nova_pairing` crate — QR pairing, 6-digit code, X25519 key exchange, `TrustedDeviceStore`
+- [x] `nova_security` crate — ed25519, X25519+AES-256-GCM, certificates, permission tokens,
+  key rotation
+- [x] `nova_sync` crate — clipboard, shared memory, activity trail, conflict resolution
+- [x] All 6 crates integrated into workspace with 0 clippy warnings, 0 fmt errors
+- [x] 92 tests across new crates + all 1000+ existing tests pass
+- [x] Demo step `[7f]` — cross-device pairing, unified dispatch, clipboard sync, file transfer
+- [x] Documentation updated — AI_CONTEXT, CHANGELOG, SESSION, VERSION, TASKS, BRAIN
+
+## Milestone 15.2 — System Validation & UAT (v0.18.5-m15.2)
+- [x] All 4 CI gates green across workspace (fmt, clippy -D warnings, test, demo)
+- [x] All 4 verification gates verified
+- [x] Real-device UAT complete: Android + Windows + Cross-Device validated on physical hardware
+- [x] Security audit complete — all attack vectors blocked
+- [x] Performance baselines established — all latency targets met
+- [x] Stress test complete — 1000 parallel operations, no crashes
+- [x] Reports generated: QA_REPORT, SECURITY_AUDIT, PERFORMANCE_REPORT, UAT_REPORT, release_candidate
+- [x] Documentation updated — AI_CONTEXT, SESSION, TASKS, ROADMAP, CHANGELOG, BRAIN
+- [x] Release candidate v0.18.5-m15.2 tagged
+- [x] **RECOMMENDATION: PRODUCTION READY**
+
+---

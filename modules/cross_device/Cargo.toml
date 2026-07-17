@@ -1,0 +1,27 @@
+[package]
+name = "nova_cross_device"
+version = "0.1.0"
+edition = "2021"
+description = "NOVA Cross-Device Platform — DeviceManager, sessions, heartbeat, discovery, presence, events"
+
+[lib]
+name = "nova_cross_device"
+path = "src/lib.rs"
+
+[dependencies]
+nova_kernel = { path = "../../src/kernel" }
+nova_security = { path = "../../modules/security" }
+nova_windows_agent = { path = "../../modules/windows_agent" }
+nova_plugin_sdk = { path = "../../modules/plugin_sdk" }
+nova_transport = { path = "../../modules/transport" }
+nova_pairing = { path = "../../modules/pairing" }
+nova_sync = { path = "../../modules/sync" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+parking_lot = { workspace = true }

@@ -111,4 +111,71 @@ mod tests {
         assert!(formats.contains(&"jpeg"));
         assert!(formats.contains(&"png"));
     }
+
+    #[tokio::test]
+    async fn test_load_real_png_image() {
+        let loader = NativeImageLoader::new();
+
+        // Create a real 2x2 RGBA PNG in memory (2*2*4 = 16 bytes)
+        let mut png_data = Vec::new();
+        {
+            let pixels: Vec<u8> = vec![
+                255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 0, 255,
+            ];
+            let img = image::RgbaImage::from_raw(2, 2, pixels).expect("create image");
+            let mut cursor = std::io::Cursor::new(&mut png_data);
+            img.write_to(&mut cursor, image::ImageFormat::Png)
+                .expect("PNG encode should succeed");
+        }
+
+        assert!(!png_data.is_empty(), "PNG data should not be empty");
+
+        let result = loader.load_from_bytes(&png_data).await;
+        assert!(result.is_ok(), "Should load valid PNG: {:?}", result.err());
+
+        let image_data = result.unwrap();
+        assert_eq!(image_data.width, 2, "Width should be 2");
+        assert_eq!(image_data.height, 2, "Height should be 2");
+        assert!(!image_data.data.is_empty(), "Should have pixel data");
+
+        println!(
+            "[REAL VISION] Loaded 2x2 PNG: {}x{}, {} bytes",
+            image_data.width,
+            image_data.height,
+            image_data.data.len()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_load_real_jpeg_image() {
+        let loader = NativeImageLoader::new();
+
+        // Create a real 3x3 RGB JPEG in memory
+        let mut jpeg_data = Vec::new();
+        {
+            let pixels: Vec<u8> = vec![
+                255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255, 128, 128,
+                128, 64, 64, 64, 0, 0, 0,
+            ];
+            let img = image::RgbImage::from_raw(3, 3, pixels).expect("create image");
+            let mut cursor = std::io::Cursor::new(&mut jpeg_data);
+            img.write_to(&mut cursor, image::ImageFormat::Jpeg)
+                .expect("JPEG encode should succeed");
+        }
+
+        assert!(!jpeg_data.is_empty(), "JPEG data should not be empty");
+
+        let result = loader.load_from_bytes(&jpeg_data).await;
+        assert!(result.is_ok(), "Should load valid JPEG: {:?}", result.err());
+        let image_data = result.unwrap();
+        assert_eq!(image_data.width, 3, "Width should be 3");
+        assert_eq!(image_data.height, 3, "Height should be 3");
+        println!(
+            "[REAL VISION] Loaded 3x3 JPEG: {}x{}, {} bytes (format={})",
+            image_data.width,
+            image_data.height,
+            image_data.data.len(),
+            image_data.format,
+        );
+    }
 }

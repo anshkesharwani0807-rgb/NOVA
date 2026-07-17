@@ -8,6 +8,7 @@ pub mod manifest;
 pub mod permissions;
 pub mod plugin;
 pub mod registry;
+pub mod remote;
 pub mod sandbox;
 pub mod storage;
 
@@ -21,5 +22,9 @@ pub use manifest::PluginManifest;
 pub use permissions::PluginPermissionManager;
 pub use plugin::Plugin;
 pub use registry::{PluginEntry, PluginRegistry, PluginState};
+pub use remote::{
+    NullRemoteProvider, RemoteCapabilityProvider, ALL_REMOTE_PERMISSIONS, REMOTE_CLIPBOARD,
+    REMOTE_EXECUTE, REMOTE_FILES, REMOTE_MEMORY, REMOTE_NOTIFICATIONS,
+};
 pub use sandbox::{PluginSandbox, Sandbox};
 pub use storage::PluginStorage;

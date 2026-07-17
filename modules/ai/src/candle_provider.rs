@@ -344,3 +344,74 @@ impl InferenceProvider for CandleProvider {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::provider::{Accumulator, ChunkSink};
+    use crate::{Cancellation, InferenceParams, InferenceRequest};
+    use tokio::sync::mpsc;
+
+    fn dummy_req() -> InferenceRequest {
+        InferenceRequest::new(
+            vec![Message {
+                role: Role::User,
+                content: "hello".into(),
+            }],
+            InferenceParams::default(),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_candle_provider_create_and_describe() {
+        let provider = CandleProvider::new(
+            "test-model",
+            "D:\\nonexistent\\model.gguf",
+            "D:\\nonexistent\\tokenizer.json",
+        );
+        let desc = provider.describe();
+        assert_eq!(desc.id, "test-model");
+        assert_eq!(desc.provider, "candle-gguf");
+        assert!(desc.local);
+        assert!(!desc.loaded);
+        println!("[REAL AI] CandleProvider created with desc: {:?}", desc);
+    }
+
+    #[tokio::test]
+    async fn test_candle_provider_load_nonexistent_model() {
+        let provider = CandleProvider::new(
+            "test-model",
+            "D:\\nonexistent\\model.gguf",
+            "D:\\nonexistent\\tokenizer.json",
+        );
+        let result = provider.load().await;
+        assert!(result.is_err(), "Should fail with nonexistent model");
+        let err = result.unwrap_err();
+        assert_eq!(err.code, "ERR_AI_MODEL_NOT_FOUND");
+        println!(
+            "[REAL AI] Load nonexistent returned expected error: {}",
+            err.code
+        );
+    }
+
+    #[tokio::test]
+    async fn test_candle_provider_infer_without_load() {
+        let provider = CandleProvider::new(
+            "test-model",
+            "D:\\nonexistent\\model.gguf",
+            "D:\\nonexistent\\tokenizer.json",
+        );
+        let cancel = Cancellation::default();
+        let (tx, _rx) = mpsc::unbounded_channel::<InferenceChunk>();
+        let acc = Arc::new(Mutex::new(Accumulator::default()));
+        let sink = ChunkSink::new(tx, acc);
+        let result = provider.infer(&dummy_req(), &cancel, &sink).await;
+        assert!(result.is_err(), "Should fail without loading");
+        let err = result.unwrap_err();
+        assert_eq!(err.code, "ERR_AI_MODEL_NOT_LOADED");
+        println!(
+            "[REAL AI] Infer without load returned expected error: {}",
+            err.code
+        );
+    }
+}

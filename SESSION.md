@@ -1,3 +1,109 @@
+# Session Summary - 2026-07-16 (M15.2 System Validation & UAT Audit)
+
+## Agent
+**Kiro** (AI-powered development assistant)
+
+## Progress Made
+
+### M15.2 — System Validation & UAT (CODE-LEVEL AUDIT COMPLETE)
+
+Performed comprehensive code-level validation across all 23 workspace crates.
+
+**What was actually tested:**
+- All 4 CI gates — ✅ PASS
+- Module-by-module health audit — documented in `health_report.json`
+- Real-vs-Mock inventory — revealed 6 modules are 100% mock/simulated
+- Cryptographic security audit — `nova_security` 100% real crypto, properly tested
+- Integration data flows — verified through demo (all module chains work in-process)
+
+**What was NOT tested (no real devices):**
+- Android: No APK, no emulator, no physical phone
+- Windows: RealWindowsProvider never executed (taskkill, shutdown, clipboard, etc.)
+- Cross-device: All pairing/transfer in-process simulation
+- Voice: No microphone/speaker - all mock pipeline
+- Vision: All AI analysis mock (OCR, detection, face, etc.)
+- AI: CandleProvider never loaded with real GGUF model
+- Automation: No real app launch, notification, or command execution
+- Performance: All benchmarks use test-double providers
+- Stress: No parallel operation or reconnect testing
+
+**Reports created:**
+- `docs/audits/QA_REPORT.md` — Full module test coverage and real-vs-mock inventory
+- `docs/audits/UAT_REPORT.md` — Per-test-case UAT status with real-device PENDING marks
+- `docs/audits/SECURITY_AUDIT.md` — Crypto audit, attack surface, supply chain
+- `docs/audits/PERFORMANCE_REPORT.md` — No real baselines established
+- `docs/audits/health_report.json` — Machine-readable health data
+- `release_candidate.md` — Known issues, risk assessment, recommendation
+
+**Key lesson:** The codebase is well-structured and all module APIs are consistent,
+but ~40% of the user-facing features operate on mocks/simulations only.
+Real-device UAT is required before production deployment.
+
+---
+
+# Session Summary - 2026-07-16 (M16 Cross-Device Platform)
+
+## Agent
+**Kiro** (AI-powered development assistant)
+
+## Progress Made
+
+### M16 — Cross-Device Platform (COMPLETE)
+
+Brought the M16 Cross-Device Platform from the Jarvis AI bridge stubs into the NOVA
+workspace as 6 fully-implemented, tested, and integrated crates:
+
+1. **`nova_security` (735 lines)** — ed25519 signing/verification, X25519 + AES-256-GCM
+   encryption, HKDF key derivation, `DeviceCertificate`, `PermissionToken`,
+   `PermissionManager`, key rotation. 20 tests.
+
+2. **`nova_pairing` (777 lines)** — QR-based device pairing, 6-digit code, X25519 key
+   exchange, `PairingSession` (5 states), `TrustedDeviceStore`, PEM encoding. 14 tests.
+
+3. **`nova_transport` (1399 lines)** — TCP transport with bincode packet framing, Zlib
+   compression, X25519+AES-256-GCM encryption, heartbeat + reconnection, UDP multicast
+   local discovery. 12 tests.
+
+4. **`nova_windows_agent` (659 lines)** — 17 Windows capabilities, `WindowsCapabilityProvider`
+   trait (`MockWindowsProvider` + `RealWindowsProvider`), `WindowsAgent` `KernelModule`.
+   6 tests.
+
+5. **`nova_sync` (741 lines)** — clipboard sync, shared memory store, activity trail
+   (bounded, newest-first), conflict resolution, sync events. 14 tests.
+
+6. **`nova_cross_device` (1409 lines)** — `CrossDeviceCoordinator` `KernelModule`,
+   `DeviceManager`, `SessionManager`, `PlatformAdapter` trait (Windows/Android),
+   `UnifiedCommandIntent` (5 types), per-device permission profiles, E2E encrypted file
+   transfer, `RemoteCapabilityProvider` for plugin SDK. 26 tests.
+
+### Fixes applied across workspace
+- 20+ clippy warnings resolved (needless borrows, map_or→is_some_and, complex types,
+  unused imports, unused futures, MutexGuard across await, identical branches)
+- `nova_pairing` expiration logic: now correctly returns `CodeExpired` instead of `InvalidCode`
+- `nova_sync` activity trail test: corrected for newest-first ordering
+- `nova_cross_device` Android default permissions now include `PERM_FILES`
+
+### Verification (all 4 gates green)
+```
+cargo fmt --all -- --check                           ✅ (0 changes)
+cargo clippy --workspace --all-targets -- -D warnings ✅ (0 warnings)
+cargo test --workspace                               ✅ (all 1100+ tests pass)
+cargo run -p nova_demo                              ✅ ([7f] Cross-Device Platform runs cleanly)
+```
+
+## Modified Files (M16)
+- `modules/security/` (full crate, copied from bridge stubs + clippy fixes)
+- `modules/pairing/` (full crate, copied from bridge stubs + expiration fix)
+- `modules/transport/` (full crate, copied from bridge stubs + clippy fixes)
+- `modules/windows_agent/` (full crate, copied from bridge stubs + clippy fixes)
+- `modules/sync/` (full crate, copied from bridge stubs + test fix)
+- `modules/cross_device/` (full crate, copied from bridge stubs + clippy/test fixes)
+- `apps/nova-demo/src/main.rs` (fixed KernelModule import, added .await to dispatch calls)
+- `Cargo.toml` (workspace members updated)
+- `BRAIN.md`, `AI_CONTEXT.md`, `CHANGELOG.md`, `TASKS.md`, `SESSION.md`, `VERSION`
+
+---
+
 # Session Summary - 2026-07-14 (M15 Knowledge Graph & Memory Intelligence)
 
 ## Agent

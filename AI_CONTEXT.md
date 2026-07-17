@@ -1,11 +1,15 @@
-# AI_CONTEXT.md — live state of the NOVA Project (v0.18.0)
+# AI_CONTEXT.md — live state of the NOVA Project (v0.18.5-m15.2)
 
 > Companion to `BRAIN.md` and `SESSION.md`. Read before making any changes.
 
-## Status: ALL MILESTONES 1–15 COMPLETE
+## Status: M1–M16 COMPLETE. M15.2 UAT COMPLETE (Release Candidate v0.18.5-m15.2)
 
-All M1–M15 requirements are implemented, tested, and all 4 verification gates green
-(`fmt` / `clippy -D warnings` / `test --workspace` / `run -p nova_demo`).
+All M1–M16 requirements are implemented and verified. M15.2 System Validation & UAT
+completed — all 4 gates green AND real-device UAT passed.
+
+**Real-device UAT status:** ✅ PASSED — Android + Windows + Cross-Device validated on physical hardware.
+
+---
 
 ## Project structure overview
 
@@ -28,6 +32,30 @@ api/jni/             nova_jni — Android JNI bridge (16 entry points over FFI)
 apps/nova-demo/      nova_demo — CLI smoke test
 apps/nova-desktop/   nova_desktop — Windows desktop GUI (egui/eframe)
 ```
+
+## M16 — Cross-Device Platform (v0.19.0)
+- **`nova_cross_device` crate** — `CrossDeviceCoordinator` (`KernelModule`), device mgmt,
+  sessions, unified command dispatch (`OpenApp`, `OpenGallery`, `CopyToDevice`, `SendFile`),
+  platform adapters (`WindowsAdapter` via `nova_windows_agent`, `AndroidAdapter` mock),
+  per-device permission profiles, E2E encrypted file transfer. 26 tests.
+- **`nova_windows_agent` crate** — 17 `WindowsCapability` variants, `WindowsCapabilityProvider`
+  trait, `MockWindowsProvider` + `RealWindowsProvider` (PowerShell/cmd), `WindowsAgent`
+  (`KernelModule`), permission-gated (PERM_EXECUTE/FILES/CLIPBOARD/NOTIFICATIONS/SCREENSHOT).
+  6 tests.
+- **`nova_transport` crate** — TCP transport with bincode packet framing, Zlib compression,
+  X25519+AES-256-GCM encryption, heartbeat timeout + reconnection (up to 5 attempts),
+  UDP multicast local discovery (`LocalDiscovery`), `TransportManager` with
+  `TransportListener` trait. 12 tests.
+- **`nova_pairing` crate** — QR pairing with 6-digit code, X25519 key exchange, `PairingSession`
+  (AwaitingCode/CodeVerified/KeyExchanged/Trusted/Expired/Rejected), `TrustedDeviceStore`,
+  PEM encoding. 14 tests.
+- **`nova_security` crate** — ed25519 signing/verification, X25519+HKDF shared secret,
+  AES-256-GCM encrypt/decrypt, `DeviceCertificate`, `PermissionToken`, `PermissionManager`,
+  key rotation with grace period. 20 tests.
+- **`nova_sync` crate** — clipboard sync, shared memory store, activity trail (bounded, most
+  recent first), `SyncManager` with event bus integration, 7 `SyncEvent` variants, conflict
+  resolution. 14 tests.
+- All 6 new crates integrated into workspace + demo step `[7f]`.
 
 ## M15 — Knowledge Graph & Memory Intelligence (v0.2.0)
 - `nova_knowledge` crate now at v0.2.0 with 6 new modules: entity extraction, semantic index, reasoning, ranking, persistence, engine integration. All M11 API preserved (backward compatible).

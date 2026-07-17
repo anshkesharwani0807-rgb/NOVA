@@ -1,15 +1,16 @@
 [package]
-name = "nova_sync"
+name = "nova_windows_agent"
 version = "0.1.0"
 edition = "2021"
-description = "NOVA Cross-Device Sync — shared memory, clipboard, activity trail, automation queue, conflict resolution"
+description = "NOVA Windows Agent — Windows service, system tray, window manager, clipboard, file, notification, audio, process APIs"
 
 [lib]
-name = "nova_sync"
+name = "nova_windows_agent"
 path = "src/lib.rs"
 
 [dependencies]
 nova_kernel = { path = "../../src/kernel" }
+nova_security = { path = "../../modules/security" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }

@@ -1,15 +1,16 @@
 [package]
-name = "nova_sync"
+name = "nova_transport"
 version = "0.1.0"
 edition = "2021"
-description = "NOVA Cross-Device Sync — shared memory, clipboard, activity trail, automation queue, conflict resolution"
+description = "NOVA Cross-Device Transport — TCP, local discovery, heartbeat, reconnect, fragmentation, compression, encryption"
 
 [lib]
-name = "nova_sync"
+name = "nova_transport"
 path = "src/lib.rs"
 
 [dependencies]
 nova_kernel = { path = "../../src/kernel" }
+nova_security = { path = "../../modules/security" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
@@ -19,3 +20,5 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 parking_lot = { workspace = true }
+flate2 = "1.0"
+bincode = "1.3"

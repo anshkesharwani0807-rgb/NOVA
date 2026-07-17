@@ -24,5 +24,13 @@ nova_plugin_host = { path = "../../modules/plugin_host" }
 nova_plugin_sdk = { path = "../../modules/plugin_sdk" }
 nova_knowledge = { path = "../../modules/knowledge" }
 nova_automation = { path = "../../modules/automation" }
+nova_security = { path = "../../modules/security" }
+nova_pairing = { path = "../../modules/pairing" }
+nova_sync = { path = "../../modules/sync" }
+nova_transport = { path = "../../modules/transport" }
+nova_windows_agent = { path = "../../modules/windows_agent" }
+nova_cross_device = { path = "../../modules/cross_device" }
 tokio = { workspace = true }
 async-trait = { workspace = true }
+parking_lot = { workspace = true }
+serde_json = { workspace = true }

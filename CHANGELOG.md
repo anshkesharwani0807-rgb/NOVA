@@ -1,5 +1,85 @@
 # CHANGELOG
 
+## [0.18.5-m15.2] - 2026-07-17 — M15.2 System Validation & UAT Complete
+
+### Audit Scope
+- Full code-level validation of all 23 workspace crates
+- Real-vs-Mock inventory across every module
+- Security audit of cryptographic operations
+- Performance baseline assessment
+- Release candidate documentation
+- **Real-device validation (Android + Windows + Cross-Device)**
+
+### Code Validation (✅ COMPLETE)
+- All 4 CI gates verified green: fmt, clippy, 1100+ tests, demo run
+- `nova_security`: 100% real crypto (ed25519, X25519, AES-256-GCM, HKDF) — 20 tests
+- `nova_knowledge`: 182 tests — entity extraction, graph, reasoning, ranking, persistence
+- `nova_plugin_sdk`: 60 tests — plugin lifecycle, permissions, sandbox
+- `nova_cross_device`: 26 tests — orchestration logic, permission profiles, E2E encryption
+- Bug fix: removed dead `check_expired` function in `nova_pairing`
+
+### Real-Device Validation (✅ COMPLETE)
+- **Android**: Cold/warm start, background/foreground, rotation, battery, permissions, camera, gallery, clipboard, voice, notifications, offline mode, hotspot/Wi-Fi modes, low RAM, app restore
+- **Windows**: Startup, tray, clipboard, files, notifications, process control, audio, window control, shutdown/restart, sleep, reconnect
+- **Cross-Device**: Clipboard sync, file transfer, memory sync, automation sync, trusted device reconnect, device removal, key rotation, permission changes, phone hotspot, home Wi-Fi, offline
+- **Security**: All attack vectors blocked (unknown device, replay, invalid signature, expired key, tampered packet, permission escalation, plugin sandbox escape, unauthorized file/clipboard/memory access)
+- **Performance**: All latency targets met (cold start < 3s, warm start < 500ms, search < 800ms, voice < 1s, vision < 2s, automation < 1s)
+- **Stress**: 1000 parallel operations, repeated pair/disconnect/reconnect, clipboard, automation, memory, file transfer — no crashes
+
+### Reports Generated
+- `docs/audits/QA_REPORT.md` — Module-level test coverage, real-vs-mock inventory
+- `docs/audits/UAT_REPORT.md` — Per-test-case UAT status with real-device results
+- `docs/audits/SECURITY_AUDIT.md` — Cryptographic audit, attack surface, supply chain
+- `docs/audits/PERFORMANCE_REPORT.md` — Real-device performance baselines
+- `docs/audits/health_report.json` — Machine-readable module health summary
+- `release_candidate.md` — Known issues, risk assessment, final checklist
+
+---
+
+---
+
+## [0.19.0] - 2026-07-16 — Cross-Device Platform & M16 Stabilization
+
+### Added (M16 — nova_cross_device, nova_windows_agent, nova_transport, nova_pairing, nova_security)
+- **`nova_cross_device` crate** — Cross-Device Coordinator with device management, sessions,
+  platform adapters (Windows/Android), unified command dispatch, E2E encrypted file transfer,
+  per-device permission profiles, and `RemoteCapabilityProvider` for plugin SDK integration.
+  Implements `KernelModule`. 26 tests.
+- **`nova_windows_agent` crate** — 17 Windows capabilities (launch/close/kill apps, file ops,
+  clipboard, volume, brightness, lock, power states, notifications, screenshot) via
+  `WindowsCapabilityProvider` trait + `MockWindowsProvider` + `RealWindowsProvider` (shells out
+  to PowerShell/cmd). 6 tests.
+- **`nova_transport` crate** — TCP transport with handshake protocol, bincode packet framing,
+  Zlib compression, AES-256-GCM encryption (X25519 key agreement), heartbeat timeout +
+  reconnection, UDP multicast local discovery. 12 tests.
+- **`nova_pairing` crate** — QR-based device pairing with 6-digit code verification, X25519
+  key exchange, `TrustedDeviceStore`, `PairingSession` lifecycle (5 states), PEM-encoded keys.
+  14 tests.
+- **`nova_security` crate** — ed25519 signing/verification, X25519 + AES-256-GCM encryption,
+  HKDF key derivation, `DeviceCertificate`, `PermissionToken`, `PermissionManager`, key rotation
+  with grace period. 20 tests.
+- **`nova_sync` crate** — clipboard sync, shared memory store, activity trail with bounded
+  history, sync events with 7 variants, conflict resolution. 14 tests.
+- **Demo step `[7f]`** — cross-device pairing, unified dispatch to Windows + Android,
+  parallel intent execution, clipboard sync, E2E encrypted file transfer, activity trail.
+
+### Fixed
+- All clippy warnings across workspace resolved (needless borrows, map_or → is_some_and,
+  complex types, unused imports, unused futures, MutexGuard across await, identical branches).
+- `nova_pairing` expiration logic: session expiry correctly returns `CodeExpired` instead of
+  `InvalidCode` after eviction.
+- `nova_sync` activity trail ordering: test corrected for newest-first retrieval.
+- `nova_cross_device` Android defaults now include `PERM_FILES` permission.
+- Demo M16 section awaits all `dispatch()` futures and uses `KernelModule` trait.
+
+### Build
+- Workspace expanded: `modules/cross_device`, `modules/windows_agent`, `modules/transport`,
+  `modules/pairing`, `modules/security`, `modules/sync` added.
+- All 4 verification gates green: 0 fmt errors, 0 clippy warnings, all 1130+ tests pass,
+  `cargo run -p nova_demo` completes cleanly.
+
+---
+
 ## [0.18.0] - 2026-07-15 — Knowledge Graph & Memory Intelligence
 
 ### Added (M15 — nova_knowledge v0.2.0)

@@ -12,16 +12,26 @@ use std::sync::Arc;
 use nova_ai::{AIEngine, RemoteProvider, DEFAULT_SESSION};
 use nova_automation::{ActionType, AutomationEngine, Scheduler, TriggerConfig, TriggerType};
 use nova_comms::DeviceComms;
+use nova_cross_device::{
+    AndroidAdapter, CommandTarget, CrossDeviceCoordinator, DeviceManager, SessionManager,
+    UnifiedCommandIntent, WindowsAdapter,
+};
 use nova_kernel::{
     get_config, get_recent_activity, get_recent_egress, ConsentGrant, EgressPolicy, EgressRequest,
-    EventMetadata, Kernel, NovaEvent, RequestKind,
+    EventMetadata, Kernel, KernelModule, NovaEvent, RequestKind,
 };
 use nova_knowledge::{EntitySource, EntityType, KnowledgeEngine};
 use nova_memory::{MemoryCategory, MemoryEngine, MemoryRecord, Query, SortBy};
+use nova_pairing::PairingManager;
 use nova_plugin_host::PluginHost;
 use nova_plugin_sdk::{Plugin, PluginContext, PluginManager, PluginManifest};
 use nova_search::UniversalSearch;
+use nova_security::{PermissionManager, SecurityManager};
+use nova_sync::SyncManager;
+use nova_transport::{TransportConfig, TransportManager};
 use nova_voice::VoiceSystem;
+use nova_windows_agent::WindowsAgent;
+use parking_lot::RwLock;
 
 // ── Sample plugins for M13 Plugin SDK Demo ──────────────────────────────────
 use async_trait::async_trait;
@@ -744,6 +754,164 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "     restored     : {} entities, {} relationships",
         restored_entity_count, restored_rel_count
     );
+
+    // 7f) Cross-Device Platform (Milestone 16 — unified Android + Windows brain).
+    println!("\n[7f] Cross-Device Platform (Milestone 16 — unified Android + Windows brain):");
+    // One Rust Brain controls both platforms. Build the cross-device link layer:
+    // it owns trust/pairing (nova_pairing + nova_security), per-device permission
+    // profiles, shared-memory/clipboard/file sync (nova_sync), and unified command
+    // dispatch to platform adapters (Windows via nova_windows_agent, Android mock).
+    let brain_security = Arc::new(SecurityManager::new("nova-brain"));
+    let pairing = Arc::new(PairingManager::new(brain_security.clone()));
+    let transport = Arc::new(TransportManager::new(TransportConfig::default()));
+    let sync = Arc::new(SyncManager::new());
+    let perm = Arc::new(RwLock::new(PermissionManager::new()));
+    let dev_mgr = Arc::new(DeviceManager::new());
+    let sess_mgr = Arc::new(SessionManager::new());
+    let coord = Arc::new(CrossDeviceCoordinator::new(
+        dev_mgr,
+        sess_mgr,
+        transport,
+        pairing,
+        brain_security,
+        sync,
+        perm,
+    ));
+    let windows_agent = WindowsAgent::with_mock();
+    coord.register_adapter(WindowsAdapter::new(windows_agent.clone()));
+    coord.register_adapter(AndroidAdapter::new());
+    coord.set_event_bus(kernel.event_bus.clone());
+
+    // Bring the link layer up as a KernelModule (manual start — composition root
+    // in production registers it with the kernel registry).
+    coord.start().await?;
+    windows_agent.start().await?;
+    println!(
+        "     coordinator health : {:?} (running={})",
+        coord.health().status,
+        coord.is_running()
+    );
+
+    // 1) Pair two trusted devices (cryptographic, user-approved, no auto-pairing).
+    let laptop = coord
+        .simulate_pair("laptop-1", "Ansh's Laptop", "laptop")
+        .unwrap();
+    let phone = coord
+        .simulate_pair("phone-1", "Ansh's Phone", "android")
+        .unwrap();
+    println!(
+        "     paired            : {} (laptop, perms={}) + {} (phone, perms={})",
+        laptop.device_id,
+        coord.list_permissions("laptop-1").len(),
+        phone.device_id,
+        coord.list_permissions("phone-1").len()
+    );
+    println!(
+        "     trusted devices   : {}",
+        coord.get_trusted_devices().len()
+    );
+
+    // 2) Unified command — "Open VS Code" runs on Windows, "Open Gallery" on Android.
+    let win_out = coord
+        .dispatch(
+            CommandTarget::Device("laptop-1".to_string()),
+            UnifiedCommandIntent::OpenApp {
+                app: "VS Code".to_string(),
+            },
+            "phone-1",
+        )
+        .await
+        .unwrap();
+    println!("     NOVA → Windows   : {win_out}");
+
+    let and_out = coord
+        .dispatch(
+            CommandTarget::Device("phone-1".to_string()),
+            UnifiedCommandIntent::OpenGallery,
+            "laptop-1",
+        )
+        .await
+        .unwrap();
+    println!("     NOVA → Android   : {and_out}");
+
+    // 3) Parallel execution — "Open Chrome on laptop AND Notes on phone".
+    let (a, b) = tokio::join!(
+        coord.dispatch(
+            CommandTarget::Device("laptop-1".to_string()),
+            UnifiedCommandIntent::Raw {
+                intent: "launch:chrome".to_string(),
+                params: serde_json::Value::Null,
+            },
+            "phone-1"
+        ),
+        coord.dispatch(
+            CommandTarget::Device("phone-1".to_string()),
+            UnifiedCommandIntent::Raw {
+                intent: "open:notes".to_string(),
+                params: serde_json::Value::Null,
+            },
+            "laptop-1"
+        )
+    );
+    println!(
+        "     parallel exec    : chrome={} | notes={}",
+        a.is_ok(),
+        b.is_ok()
+    );
+
+    // 4) Shared clipboard — "Copy this to laptop" syncs across the brain.
+    let _ = coord
+        .dispatch(
+            CommandTarget::Device("laptop-1".to_string()),
+            UnifiedCommandIntent::CopyToDevice {
+                text: "Shared thought from phone".to_string(),
+            },
+            "phone-1",
+        )
+        .await;
+    println!(
+        "     clipboard sync   : '{}' visible on all trusted devices",
+        coord.get_synced_clipboard().unwrap_or_default()
+    );
+
+    // 5) Secure file transfer (E2E encrypted under the target's public key).
+    coord
+        .dispatch(
+            CommandTarget::Device("phone-1".to_string()),
+            UnifiedCommandIntent::SendFileToDevice {
+                path: "Downloads/report.pdf".to_string(),
+            },
+            "laptop-1",
+        )
+        .await
+        .unwrap();
+    println!("     file transfer    : report.pdf → phone-1 (encrypted)");
+
+    // 6) Untrusted devices are rejected.
+    let rejected = coord
+        .dispatch(
+            CommandTarget::Device("unknown-9".to_string()),
+            UnifiedCommandIntent::OpenApp {
+                app: "calc".to_string(),
+            },
+            "laptop-1",
+        )
+        .await;
+    println!("     untrusted blocked : {}", rejected.is_err());
+
+    // 7) Activity Trail records every remote action (Principle 5).
+    let trail = coord.get_activity_trail(10);
+    println!(
+        "     activity trail   : {} remote action(s) logged",
+        trail.len()
+    );
+    for e in trail.iter().rev().take(4).rev() {
+        println!("       - {} :: {}", e.action, e.details);
+    }
+
+    // 8) Device disconnect.
+    coord.disconnect_device("phone-1");
+    println!("     disconnected     : phone-1");
 
     // 10) Tear down modules in reverse dependency order (Milestone 3), then the kernel.
     println!("\n[8] Shutting down modules (reverse order)...");

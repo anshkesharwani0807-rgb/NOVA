@@ -384,7 +384,34 @@ generate timelines/summaries.
 
 ---
 
-## Future Phases (Post-v1.0)
+## Milestone 16 — Cross-Device Platform (COMPLETE)
+
+**Objective:** Build the cross-device link layer that turns one Rust Brain into a unified
+Android + Windows "Digital Brain" — device discovery, trusted pairing, per-device permission
+profiles, shared memory/clipboard/file sync, and unified command dispatch.
+
+**Deliverables:**
+- `nova_cross_device` crate — `CrossDeviceCoordinator` `KernelModule`, device management,
+  sessions, platform adapters, unified command dispatch, per-device permission profiles,
+  E2E encrypted file transfer, plugin SDK integration
+- `nova_windows_agent` crate — 17 Windows capabilities, provider trait (mock + real),
+  `WindowsAgent` `KernelModule`
+- `nova_transport` crate — TCP transport, bincode packet, Zlib compression, AES-256-GCM
+  encryption, heartbeat, reconnection, UDP multicast local discovery
+- `nova_pairing` crate — QR pairing, 6-digit code, X25519 key exchange, trusted store
+- `nova_security` crate — ed25519, X25519+AES-256-GCM, certificates, permission tokens,
+  key rotation
+- `nova_sync` crate — clipboard, shared memory, activity trail, conflict resolution
+- Demo step `[7f]` exercising all 6 crates
+
+**Exit Criteria:**
+- All 4 verification gates green: 0 fmt errors, 0 clippy warnings, all 1100+ tests pass,
+  `cargo run -p nova_demo` completes cleanly with M16 section
+- No M1-M15 regressions
+
+---
+
+## Future Phases (Post-v0.19.0)
 
 - **v3.x:** Proactive helpfulness (anticipation engine, LG-2)
 - **v4.x:** Linux + macOS shells (LG-3)
@@ -393,4 +420,4 @@ generate timelines/summaries.
 
 ---
 
-*Roadmap version: 1.1. All milestones M1-M15 exit criteria verified.*
+*Roadmap version: 1.2. All milestones M1-M16 exit criteria verified.*

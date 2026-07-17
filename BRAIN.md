@@ -160,10 +160,36 @@ GitHub: private repo `https://github.com/anshkesharwani0807-rgb/NOVA` (branch `m
 - ✅ **M14 Knowledge & Memory Intelligence (v0.1.0)** — `nova_knowledge` crate (`KnowledgeEngine`, `MemoryAnalyzer`, `KnowledgeGraph`, `RelationshipEngine`, `TimelineGenerator`, `SmartRecall`, `SummaryEngine`); 9 event variants; memory analysis (categorization, importance, tags, entities, dedup, links); timeline generation; contextual recall; offline summaries; all 4 verification gates green.
 - ✅ **M15 Knowledge Graph & Memory Intelligence (v0.2.0)** — 6 new modules: entity extraction (11 entity types, 10 sources, `EntityExtractor`); semantic index (`KnowledgeIndex` + `MockEmbeddingProvider`); reasoning layer (`KnowledgeReasoner` with BFS path finding, context building, citations); ranking (`CombinedRanker`, `RecencyRanker`); persistence (`JsonFileStorage` save/load round-trip); engine integration (extract, index, search, reason, persist, permissions, 16 event types); timeline generation (daily/weekly/monthly/project/conversation); summary generation (daily/conversation/project/cluster); recall query builder. 182 tests (165 unit + 17 integration). All 4 verification gates green.
 
-All milestones 1–15 exit criteria verified. NOVA v0.18.0 ready.
+All milestones 1–16 exit criteria verified. M15.2 code-level audit complete.
+NOVA v0.19.0-m15.2 ready for code review. Real-device UAT is PENDING.
 
 `comms` and `plugin_host` are working `KernelModule` **skeletons** (start/stop cleanly, no
 real work yet).
+
+## REAL vs MOCK Status (as of M15.2 audit)
+
+| Module | Real | Mock/Simulated | Pending |
+|---|---|---|---|
+| nova_kernel | ✅ Kerne bootstrap, event bus, config, consent, egress | — | — |
+| nova_memory | ✅ SQLite + AES-256-GCM | — | — |
+| nova_search | ✅ SQLite FTS | — | — |
+| nova_security | ✅ ed25519, X25519, AES-256-GCM, HKDF | — | Real network replay attack testing |
+| nova_device | ✅ Device info detection | — | — |
+| nova_knowledge | ✅ Entity extraction, graph, reasoning, persistence | 🔶 Embeddings (mock embedding provider) | — |
+| nova_plugin_sdk | ✅ Plugin lifecycle, sandbox, permissions | 🔶 All plugins are demo/test doubles | Production plugins |
+| nova_sync | — | 🔶 In-memory sync only | Network sync |
+| nova_ai | 🔶 CandleProvider exists but never used | 🔶 MockProvider in all tests/demo | GGUF model download + test |
+| nova_voice | — | 🔶 100% mock pipeline | Real mic/speaker I/O |
+| nova_vision | 🔶 Image loading/decoding/hashing | 🔶 All 10 AI engines are mock | Real AI model integration |
+| nova_automation | — | 🔶 All actions return canned strings | Real app launch, notifications |
+| nova_pairing | 🔶 Real X25519 key exchange, QR rendering | 🔶 No real device-to-device protocol | Real pairing flow |
+| nova_transport | 🔶 Real TCP/UDP code exists | 🔶 Demo never starts transport; 3/12 tests touch network | End-to-end network test |
+| nova_windows_agent | 🔶 RealWindowsProvider defined (659 lines) | 🔶 MockWindowsProvider in all tests | Real Windows test harness |
+| nova_cross_device | 🔶 Real crypto in simulate_pair() | 🔶 AndroidAdapter mock; discovery empty; all in-process | Two-device network test |
+| nova_comms | — | — | Skeleton (start/stop only) |
+| nova_plugin_host | — | — | Skeleton (start/stop only) |
+| nova_jni | 🔶 Compiles (16 entry points) | — | Android emulator/device test |
+| nova_desktop | 🔶 Compiles (egui/eframe) | — | GUI interaction test |
 
 ---
 

@@ -18,6 +18,11 @@ members = [
     "api/jni",
     "apps/nova-demo",
     "apps/nova-desktop",
+    "modules/cross_device",
+    "modules/windows_agent",
+    "modules/transport",
+    "modules/pairing",
+    "modules/security",
 ]
 
 [workspace.dependencies]
