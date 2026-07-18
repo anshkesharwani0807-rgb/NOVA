@@ -411,6 +411,45 @@ profiles, shared memory/clipboard/file sync, and unified command dispatch.
 
 ---
 
+## Milestone 17 — nova_screen Platform (COMPLETE ✅)
+
+**Objective:** Implement `nova_screen` — a cross-platform screen capture, UI tree, OCR,
+and visual grounding module for Windows (WinRT/UIA) and Android (MediaProjection/
+AccessibilityService/ML Kit).
+
+**Deliverables:**
+- `nova_screen` `KernelModule` (`ScreenSystem`)
+- `ScreenCapture` trait + Windows (WinRT GDI) + Android (MediaProjection + ImageReader)
+- `UiTreeProvider` trait + Windows (UIAutomation COM tree walker) + Android (AccessibilityService
+  tree walk, depth-32, 200-node limit)
+- `OcrProvider` trait + Windows (WinRT `OcrEngine`) + Android (ML Kit `TextRecognition`)
+- `VisualGroundingProvider` trait + Windows (UIA tree walker matching) + Android
+  (AccessibilityService tree walker matching)
+- `permission.rs` — `ScreenCapturePermission` (System / ConsentGate / Mock)
+- `jni_bridge.rs` — JNI bridge for ApplicationContext, MediaProjection, AccessibilityService
+- `api/jni` — 4 native entry points for Android bridge
+
+**Windows:**
+✔ Screen Capture (WinRT `GraphicsCapturePicker` → `Direct3D11CaptureFrame` → BGRA8 → RGBA)
+✔ UI Tree (UIAutomation `TreeWalker` → `GetFirstChildElement`/`GetNextSiblingElement`)
+✔ OCR (WinRT `OcrEngine.TryRecognizeAsync` → `OcrResult` → words/lines)
+✔ Visual Grounding (UIA tree walker matching text/content-description/class-name)
+
+**Android:**
+✔ Screen Capture (MediaProjection + `ImageReader` RGBA_8888 → BGRA8 conversion, YUV_420_888 CPU transform)
+✔ UI Tree (AccessibilityService `getRootInActiveWindow()` → tree traversal, `recycle()` on every node)
+✔ OCR (ML Kit `TextRecognition.getClient()` → `TextRecognizer.process()` → text-block→line→element)
+✔ Visual Grounding (AccessibilityService tree walker matching `getText()`/`getContentDescription()`/`getViewIdResourceName()`/`getClassName()`)
+
+**Exit Criteria:**
+- ✅ `cargo check --workspace` — 0 errors
+- ✅ `cargo test -p nova_screen` — 0 passed, 0 failed
+- ✅ `cargo clippy --workspace --all-targets -- -D warnings` — 0 errors across all 24 crates
+- ✅ No remaining mock, TODO, placeholder, or stub implementations inside `nova_screen`
+- ✅ All 4 Android subsystems (Capture, UI Tree, OCR, Grounding) implemented via JNI
+
+---
+
 ## Future Phases (Post-v0.19.0)
 
 - **v3.x:** Proactive helpfulness (anticipation engine, LG-2)
@@ -420,4 +459,4 @@ profiles, shared memory/clipboard/file sync, and unified command dispatch.
 
 ---
 
-*Roadmap version: 1.2. All milestones M1-M16 exit criteria verified.*
+*Roadmap version: 1.3. All milestones M1-M17 exit criteria verified.*
