@@ -112,3 +112,24 @@
 - [x] **RECOMMENDATION: PRODUCTION READY**
 
 ---
+
+## Milestone 20 — Autonomous Planning & World State Management
+
+### M20 Subsystem 1 — Planner (COMPLETE ✅)
+- [x] `planner.rs` — `Goal`, `ExecutionStep`, `ExecutionPlan`, `Capability` (13 variants), `PlanValidation`, `Planner`
+- [x] Heuristic goal decomposition: brightness, volume/mute, screenshot, click/tap, type/enter, search, remember/note, open/launch, lock, wifi, bluetooth, DND, AI fallback
+- [x] Kahn's algorithm topological sort with cycle detection
+- [x] `ready_steps()` — filter by satisfied dependencies + not yet completed
+- [x] Builder-configured Planner: `with_max_steps()`, `with_default_timeout()`, `with_default_retry()`
+- [x] Helper functions: `extract_number()`, `extract_quoted()`, `extract_after()`
+- [x] 23 unit tests across all patterns, graph ops, validation, configuration
+- [x] Wired into `nova_automation` `lib.rs` with `pub use planner::*`
+
+### M20 Subsystem 2 — World State (PENDING)
+- [ ] World state model (device state, app state, screen state, network state)
+- [ ] World state store with diff tracking and subscriptions
+- [ ] Integration with Planner for context-aware decomposition
+- [ ] Permissions and privacy filtering
+
+---
+

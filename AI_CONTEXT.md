@@ -2,12 +2,10 @@
 
 > Companion to `BRAIN.md` and `SESSION.md`. Read before making any changes.
 
-## Status: M1–M16 COMPLETE. M15.2 UAT COMPLETE (Release Candidate v0.18.5-m15.2)
+## Status: M1–M19 COMPLETE. M20 S1 (Planner) COMPLETE. M20 S2 (World State) PENDING.
 
-All M1–M16 requirements are implemented and verified. M15.2 System Validation & UAT
-completed — all 4 gates green AND real-device UAT passed.
-
-**Real-device UAT status:** ✅ PASSED — Android + Windows + Cross-Device validated on physical hardware.
+All M1–M19 requirements are implemented and verified. M20 Subsystem 1 (Planner)
+is complete — all 23 tests pass, wired into `nova_automation`.
 
 ---
 

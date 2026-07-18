@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## [0.20.0-m20] - 2026-07-18 — Autonomous Planning & World State (S1: Planner)
+
+### Added (M20 Subsystem 1 — Planner)
+- **`planner.rs`** — `Goal` struct with `new()`/`with_context()` builder; `ExecutionStep` with
+  id, description, action, dependencies, capabilities, timeout, retry; `ExecutionPlan` with
+  `find_step()`/`step_ids()`; `Capability` enum (13 variants); `PlanValidation` with
+  is_valid, errors, warnings, has_cycles, unreachable_steps.
+- **`Planner`** — builder-configured (`with_max_steps`/`with_default_timeout`/`with_default_retry`);
+  `plan()` decomposes goals via heuristic pattern matching; `validate()` checks structure;
+  `topological_sort()` Kahn's algorithm; `has_cycles()`; `ready_steps()`.
+- **Goal decomposition** — 14 patterns: brightness, volume/mute, screenshot, click/tap,
+  type/enter text, search/find, remember/note/save, open/launch/start app, lock device,
+  wifi, bluetooth, DND. Fallback to `RunAI` for unrecognized goals.
+- **Helper functions** — `extract_number()`, `extract_quoted()`, `extract_after()`.
+- **23 unit tests** — all goal patterns, topological sort (empty/linear/parallel/cycle),
+  validation (valid/missing-dep/duplicate-id/cycle), ready_steps, context, configuration.
+
+### Build
+- Planner wired into `nova_automation` `lib.rs` as `mod planner` + `pub use planner::*`.
+- `cargo check --workspace` — 0 errors.
+- All 23 planner tests pass.
+
 ## [0.19.0-m19] - 2026-07-18 — Task Execution & Computer Control Platform
 
 ### Added (M19 — nova_automation: real executors, consent gate, task API)

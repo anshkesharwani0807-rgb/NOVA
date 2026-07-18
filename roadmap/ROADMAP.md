@@ -506,7 +506,33 @@ task-oriented ComputerController API, error recovery with retry, and demo integr
 
 ---
 
-## Future Phases (Post-v0.19.0)
+## Milestone 20 — Autonomous Planning & World State Management (IN PROGRESS)
+
+**Objective:** Build the autonomous planning subsystem (goal decomposition, execution plans,
+dependency graph) and the world state subsystem (live device environment model).
+
+**Deliverables (Subsystem 1 — Planner):**
+- `planner.rs` — `Goal`, `ExecutionStep`, `ExecutionPlan`, `Capability` (13 variants),
+  `PlanValidation`, `Planner` with builder pattern
+- Heuristic goal decomposition covering 14+ goal types: brightness, volume/mute, screenshot,
+  click/tap, type/enter text, search/find, remember/note/save, open/launch/start app,
+  lock device, wifi, bluetooth, DND, fallback to AI (`RunAI`)
+- Kahn's algorithm topological sort with cycle detection
+- `ready_steps()` for dependency-satisfied step filtering
+- 23 unit tests across all goal patterns and graph operations
+
+**Deliverables (Subsystem 2 — World State):**
+- (Pending)
+
+**Exit Criteria:**
+- `cargo test -p nova_automation` — planner tests pass
+- `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings
+- `cargo fmt --all -- --check` — clean
+- No M1-M19 regressions
+
+---
+
+## Future Phases (Post-v0.20.0)
 
 - **v3.x:** Proactive helpfulness (anticipation engine, LG-2)
 - **v4.x:** Linux + macOS shells (LG-3)
@@ -515,4 +541,4 @@ task-oriented ComputerController API, error recovery with retry, and demo integr
 
 ---
 
-*Roadmap version: 1.3. All milestones M1-M17 exit criteria verified.*
+*Roadmap version: 1.4. All milestones M1-M19 exit criteria verified. M20 S1 complete.*

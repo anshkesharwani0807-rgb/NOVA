@@ -163,9 +163,10 @@ GitHub: private repo `https://github.com/anshkesharwani0807-rgb/NOVA` (branch `m
 - ✅ **M17 nova_screen Platform** — Cross-platform screen capture (WinRT/MediaProjection), UI tree (UIA/AccessibilityService), OCR (WinRT/ML Kit), visual grounding, permission manager. Windows + Android real implementations.
 - ✅ **M18 nova_input Platform** — `InputEngine` trait, mouse/keyboard/touch action types, `ScreenInputBridge`, `MockInputProvider`, Windows (SendInput) + Android (AccessibilityService) real implementations.
 - ✅ **M19 Task Execution & Computer Control** — `real_executors.rs` (ScreenClick/Type/Drag/Swipe), `consent_gate.rs` (ActionClassifier + 3 autonomy dial levels), `controller.rs` (ComputerController with 6 async methods), error recovery with exponential backoff retry, named executor dispatch. 21 new unit tests. Demo [7g] validates consent gate + controller + executors.
+- ✅ **M20 S1 Planner** — `planner.rs` with `Goal`, `ExecutionStep`, `ExecutionPlan`, `Capability` (13 variants), `PlanValidation`, `Planner`. Heuristic decomposition for 14+ goal types. Kahn's topological sort, cycle detection, `ready_steps()`. 23 unit tests. Wired into `nova_automation`.
 
-All milestones 1–19 exit criteria verified.
-NOVA v0.19.0-m19 ready.
+All milestones 1–20 Subsystem 1 exit criteria verified.
+NOVA v0.20.0-m20 ready.
 
 `comms` and `plugin_host` are working `KernelModule` **skeletons** (start/stop cleanly, no
 real work yet).
