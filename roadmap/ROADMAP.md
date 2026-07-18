@@ -450,6 +450,62 @@ AccessibilityService/ML Kit).
 
 ---
 
+## Milestone 18 — nova_input Platform (COMPLETE ✅)
+
+**Objective:** Implement `nova_input` — a cross-platform input simulation module for Windows
+(Windows Input API / SendInput) and Android (AccessibilityService / input injection).
+
+**Deliverables:**
+- `nova_input` `KernelModule` (`InputSystem`)
+- `InputEngine` trait with execute method for all input action types
+- `MouseAction` enum (Click, DoubleClick, RightClick, Move, Drag, Scroll)
+- `KeyboardAction` enum (TypeText, KeyPress, KeyRelease, Hotkey)
+- `TouchAction` enum (Tap, DoubleTap, LongPress, Swipe, Pinch)
+- `ScreenInputBridge` — connects screen grounding to input actions
+- `MockInputProvider` for offline testing
+- Windows real implementation (WinAPI `SendInput`)
+- Android real implementation (AccessibilityService)
+- `apps/nova-demo/src/main.rs` [7f] integration
+
+**Exit Criteria:**
+- ✅ `cargo check --workspace` — 0 errors
+- ✅ `cargo test -p nova_input` — all tests pass
+- ✅ `cargo clippy --workspace --all-targets -- -D warnings` — 0 warnings
+- ✅ All input action types execute correctly through the pipeline
+
+---
+
+## Milestone 19 — Task Execution & Computer Control (COMPLETE ✅)
+
+**Objective:** Implement real screen-aware action executors, consent gate integration,
+task-oriented ComputerController API, error recovery with retry, and demo integration.
+
+**Deliverables:**
+- `consent_gate.rs` — `ActionClassifier` (stakes + reversibility for all 20 action types),
+  `ConsentGate` wrapping `ConsentManager::authorize()` with 3 autonomy dial levels
+  (conservative/moderate/autonomous)
+- `real_executors.rs` — `ScreenClickExecutor`, `ScreenTypeExecutor`, `ScreenDragExecutor`,
+  `ScreenSwipeExecutor` implementing `ActionExecutor` trait with capture→ground→execute pipeline
+- `controller.rs` — `ComputerController` with 6 public async methods (click_text, type_text,
+  open_app, scroll_to, navigate), `NavigationStep` enum for multi-step sequences
+- `error.rs` — Added `ElementNotFound` and `StepTimeout` variants (17 total)
+- `config.rs` — Added `step_timeout_ms` field (default 30_000)
+- `execution.rs` — Consent gate check before execution, named executor dispatch via
+  `named_executor_for()`, exponential backoff retry (`retry_delay_ms * 2^attempt.min(5)`,
+  capped at 10s), per-step timeout from config or `step.timeout_ms`
+- Demo `[7g]` — consent gate scenarios, classification, `open_app()` fallback,
+  `navigate(&[])`, real executor registration
+- 21 unit tests across all new modules
+
+**Exit Criteria:**
+- ✅ All 4 verification gates green
+- ✅ `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings
+- ✅ `cargo test --workspace` — all tests pass
+- ✅ `cargo run -p nova_demo` — [7g] section shows consent + controller + executors working
+- ✅ No M1-M18 regressions
+
+---
+
 ## Future Phases (Post-v0.19.0)
 
 - **v3.x:** Proactive helpfulness (anticipation engine, LG-2)

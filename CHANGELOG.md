@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## [0.19.0-m19] - 2026-07-18 — Task Execution & Computer Control Platform
+
+### Added (M19 — nova_automation: real executors, consent gate, task API)
+- **`real_executors.rs`** — `ScreenClickExecutor`, `ScreenTypeExecutor`, `ScreenDragExecutor`,
+  `ScreenSwipeExecutor` implementing `ActionExecutor` trait with full capture→ground→execute
+  pipeline using `ScreenInputBridge`. Falls through to `DefaultActionExecutor` for non-screen actions.
+  5 unit tests (kind strings, fallthrough).
+- **`consent_gate.rs`** — `ActionClassifier` classifies all 20 `ActionType` variants by
+  `ActionStakes` (Low/Medium/High) + `Reversibility` (Reversible/Irreversible). `ConsentGate`
+  wraps `ConsentManager::authorize()` with 3 autonomy dial levels: conservative (all prompted),
+  moderate (auto-allows low reversible), autonomous (auto-allows low + medium reversible).
+  7 unit tests (all dial levels + classification + granted override).
+- **`controller.rs`** — `ComputerController` with 6 public async methods (`click_text`,
+  `type_text`, `open_app`, `scroll_to`, `navigate`). `NavigationStep` enum (ClickText,
+  TypeText, Wait). Builder pattern (`with_screen`/`with_input`) + setter methods.
+  4 unit tests (missing engines, open_app fallback, navigate empty, default/set).
+- **Error recovery** — `error.rs`: `ElementNotFound` + `StepTimeout` variants (17 total).
+  `config.rs`: `step_timeout_ms` (default 30_000). `execution.rs`: exponential backoff retry
+  (`retry_delay_ms * 2^attempt.min(5)`, capped at 10s), consent gate check, named executor
+  dispatch via `named_executor_for()`, per-step timeout plumbing.
+- **Demo `[7g]`** — consent gate with 3 scenarios (speak autonomous→allowed, click
+  conservative→prompted, lock autonomous→prompted), `ActionClassifier::classify()`,
+  `ConsentGrant::AlwaysAllow` override, `ComputerController::open_app("Calculator")` fallback,
+  `navigate(&[])`, real executor registration.
+- **Module wiring** — `lib.rs`: `consent_gate`, `controller`, `real_executors` modules +
+  re-exports. `AutomationEngine::set_consent_gate()`, `set_autonomy_level()`.
+  `ExecutionEngine::set_screen_and_input()` registers 5 named executors.
+- **21 new unit tests** across all new modules.
+
+### Fixed
+- Nested `block_on` in async context — `controller.rs` and demo `main.rs` changed to use
+  `.await` instead of `Handle::current().block_on(...)`.
+
+### Build
+- All 4 verification gates green: 0 fmt errors, 0 clippy warnings, all workspace tests pass,
+  `cargo run -p nova_demo` completes cleanly with `[7g]` section. M19 production-ready.
+
+---
+
 ## [0.18.5-m15.2] - 2026-07-17 — M15.2 System Validation & UAT Complete
 
 ### Audit Scope

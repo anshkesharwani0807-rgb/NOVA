@@ -159,9 +159,13 @@ GitHub: private repo `https://github.com/anshkesharwani0807-rgb/NOVA` (branch `m
 - ✅ **M13 Security Hardening, QA & v1.0** — All CI gates pass; all docs updated; workspace complete.
 - ✅ **M14 Knowledge & Memory Intelligence (v0.1.0)** — `nova_knowledge` crate (`KnowledgeEngine`, `MemoryAnalyzer`, `KnowledgeGraph`, `RelationshipEngine`, `TimelineGenerator`, `SmartRecall`, `SummaryEngine`); 9 event variants; memory analysis (categorization, importance, tags, entities, dedup, links); timeline generation; contextual recall; offline summaries; all 4 verification gates green.
 - ✅ **M15 Knowledge Graph & Memory Intelligence (v0.2.0)** — 6 new modules: entity extraction (11 entity types, 10 sources, `EntityExtractor`); semantic index (`KnowledgeIndex` + `MockEmbeddingProvider`); reasoning layer (`KnowledgeReasoner` with BFS path finding, context building, citations); ranking (`CombinedRanker`, `RecencyRanker`); persistence (`JsonFileStorage` save/load round-trip); engine integration (extract, index, search, reason, persist, permissions, 16 event types); timeline generation (daily/weekly/monthly/project/conversation); summary generation (daily/conversation/project/cluster); recall query builder. 182 tests (165 unit + 17 integration). All 4 verification gates green.
+- ✅ **M16 Cross-Device Platform** — `nova_cross_device` coordinator, `nova_windows_agent` (17 capabilities), `nova_transport` (TCP + discovery), `nova_pairing` (QR + X25519), `nova_security` (ed25519 + AES-256-GCM), `nova_sync` (clipboard + memory sync). Demo [7f] exercises all 6 crates.
+- ✅ **M17 nova_screen Platform** — Cross-platform screen capture (WinRT/MediaProjection), UI tree (UIA/AccessibilityService), OCR (WinRT/ML Kit), visual grounding, permission manager. Windows + Android real implementations.
+- ✅ **M18 nova_input Platform** — `InputEngine` trait, mouse/keyboard/touch action types, `ScreenInputBridge`, `MockInputProvider`, Windows (SendInput) + Android (AccessibilityService) real implementations.
+- ✅ **M19 Task Execution & Computer Control** — `real_executors.rs` (ScreenClick/Type/Drag/Swipe), `consent_gate.rs` (ActionClassifier + 3 autonomy dial levels), `controller.rs` (ComputerController with 6 async methods), error recovery with exponential backoff retry, named executor dispatch. 21 new unit tests. Demo [7g] validates consent gate + controller + executors.
 
-All milestones 1–16 exit criteria verified. M15.2 code-level audit complete.
-NOVA v0.19.0-m15.2 ready for code review. Real-device UAT is PENDING.
+All milestones 1–19 exit criteria verified.
+NOVA v0.19.0-m19 ready.
 
 `comms` and `plugin_host` are working `KernelModule` **skeletons** (start/stop cleanly, no
 real work yet).
@@ -181,7 +185,7 @@ real work yet).
 | nova_ai | 🔶 CandleProvider exists but never used | 🔶 MockProvider in all tests/demo | GGUF model download + test |
 | nova_voice | — | 🔶 100% mock pipeline | Real mic/speaker I/O |
 | nova_vision | 🔶 Image loading/decoding/hashing | 🔶 All 10 AI engines are mock | Real AI model integration |
-| nova_automation | — | 🔶 All actions return canned strings | Real app launch, notifications |
+| nova_automation | 🔶 Consent gate (real classification + `ConsentManager`), real executors (click/type/drag/swipe capture→ground→execute pipeline) | 🔶 Screen capture depends on platform (mock used on unsupported) | Real app launch via `DefaultActionExecutor` |
 | nova_pairing | 🔶 Real X25519 key exchange, QR rendering | 🔶 No real device-to-device protocol | Real pairing flow |
 | nova_transport | 🔶 Real TCP/UDP code exists | 🔶 Demo never starts transport; 3/12 tests touch network | End-to-end network test |
 | nova_windows_agent | 🔶 RealWindowsProvider defined (659 lines) | 🔶 MockWindowsProvider in all tests | Real Windows test harness |
