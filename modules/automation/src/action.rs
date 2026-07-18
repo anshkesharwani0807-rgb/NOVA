@@ -234,43 +234,37 @@ impl ActionExecutor for DefaultActionExecutor {
             ActionType::SubWorkflow { workflow_id } => {
                 ActionResult::success(format!("sub-workflow: {}", workflow_id))
             }
-            ActionType::InputInjection(params) => {
-                ActionResult::failure(format!(
-                    "input injection requires InputEngine: {} with {} params",
-                    params.action_type,
-                    params.params.len()
-                ))
-            }
-            ActionType::ClickScreenElement { query } => {
-                ActionResult::failure(format!(
-                    "click screen '{}' requires ScreenAwareExecutor",
-                    query
-                ))
-            }
-            ActionType::TypeIntoScreenElement { query, .. } => {
-                ActionResult::failure(format!(
-                    "type into screen element '{}' requires ScreenAwareExecutor",
-                    query
-                ))
-            }
-            ActionType::ClickScreenText { text } => {
-                ActionResult::failure(format!(
-                    "click screen text '{}' requires ScreenAwareExecutor",
-                    text
-                ))
-            }
-            ActionType::DragScreenElements { from_query, to_query } => {
-                ActionResult::failure(format!(
-                    "drag '{}' -> '{}' requires ScreenAwareExecutor",
-                    from_query, to_query
-                ))
-            }
-            ActionType::SwipeScreenElements { from_query, to_query } => {
-                ActionResult::failure(format!(
-                    "swipe '{}' -> '{}' requires ScreenAwareExecutor",
-                    from_query, to_query
-                ))
-            }
+            ActionType::InputInjection(params) => ActionResult::failure(format!(
+                "input injection requires InputEngine: {} with {} params",
+                params.action_type,
+                params.params.len()
+            )),
+            ActionType::ClickScreenElement { query } => ActionResult::failure(format!(
+                "click screen '{}' requires ScreenAwareExecutor",
+                query
+            )),
+            ActionType::TypeIntoScreenElement { query, .. } => ActionResult::failure(format!(
+                "type into screen element '{}' requires ScreenAwareExecutor",
+                query
+            )),
+            ActionType::ClickScreenText { text } => ActionResult::failure(format!(
+                "click screen text '{}' requires ScreenAwareExecutor",
+                text
+            )),
+            ActionType::DragScreenElements {
+                from_query,
+                to_query,
+            } => ActionResult::failure(format!(
+                "drag '{}' -> '{}' requires ScreenAwareExecutor",
+                from_query, to_query
+            )),
+            ActionType::SwipeScreenElements {
+                from_query,
+                to_query,
+            } => ActionResult::failure(format!(
+                "swipe '{}' -> '{}' requires ScreenAwareExecutor",
+                from_query, to_query
+            )),
         }
     }
 

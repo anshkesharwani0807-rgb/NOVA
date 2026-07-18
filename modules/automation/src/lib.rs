@@ -14,6 +14,7 @@ mod scheduler;
 mod screen_executor;
 mod trigger;
 mod workflow;
+mod world_state;
 
 pub use action::*;
 pub use condition::*;
@@ -31,6 +32,7 @@ pub use scheduler::*;
 pub use screen_executor::*;
 pub use trigger::*;
 pub use workflow::*;
+pub use world_state::*;
 
 use async_trait::async_trait;
 use nova_kernel::module::{KernelModule, ModuleHealth};

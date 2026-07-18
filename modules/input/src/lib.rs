@@ -1,3 +1,5 @@
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod error;
 pub mod events;
 pub mod mock;
@@ -7,24 +9,25 @@ pub mod types;
 #[cfg(target_os = "windows")]
 pub mod windows;
 #[cfg(target_os = "android")]
-pub mod android;
-#[cfg(target_os = "android")]
 pub use android::{
     get_accessibility_service as android_get_accessibility_service,
     has_accessibility_service as android_has_accessibility_service,
-    set_accessibility_service as android_set_accessibility_service,
-    AndroidInputProvider,
+    set_accessibility_service as android_set_accessibility_service, AndroidInputProvider,
 };
 
 pub use error::{InputError, InputResult};
 pub use events::{InputEvent, InputEventPayload};
 pub use mock::MockInputProvider;
-pub use permission::{InputCapability, PERM_INPUT_GESTURE, PERM_INPUT_KEYBOARD, PERM_INPUT_MOUSE, PERM_INPUT_TOUCH};
+pub use permission::{
+    InputCapability, PERM_INPUT_GESTURE, PERM_INPUT_KEYBOARD, PERM_INPUT_MOUSE, PERM_INPUT_TOUCH,
+};
 pub use traits::InputEngine;
 pub use types::*;
 
 use async_trait::async_trait;
-use nova_kernel::{HealthStatus, KernelModule, ModuleHealth, Result, EventMetadata, NovaEvent, log_activity};
+use nova_kernel::{
+    log_activity, EventMetadata, HealthStatus, KernelModule, ModuleHealth, NovaEvent, Result,
+};
 use parking_lot::RwLock;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -101,7 +104,9 @@ impl InputSystem {
             );
             self.push_audit_event(event.clone());
             self.publish_event(event);
-            return Err(InputError::PermissionDenied("input system disabled".to_string()));
+            return Err(InputError::PermissionDenied(
+                "input system disabled".to_string(),
+            ));
         }
         drop(cfg);
 
@@ -207,11 +212,16 @@ impl InputSystem {
     }
 
     pub async fn scroll(&self, delta_x: i32, delta_y: i32) -> InputResult<ActionResult> {
-        self.execute(&InputAction::Mouse(MouseAction::Scroll { delta_x, delta_y })).await
+        self.execute(&InputAction::Mouse(MouseAction::Scroll {
+            delta_x,
+            delta_y,
+        }))
+        .await
     }
 
     pub async fn tap(&self, point: types::Point) -> InputResult<ActionResult> {
-        self.execute(&InputAction::Touch(TouchAction::Tap { point })).await
+        self.execute(&InputAction::Touch(TouchAction::Tap { point }))
+            .await
     }
 
     pub async fn swipe(&self, from: types::Point, to: types::Point) -> InputResult<ActionResult> {

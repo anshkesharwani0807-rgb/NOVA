@@ -136,8 +136,13 @@ impl ActionClassifier {
 #[derive(Debug, Clone)]
 pub enum ConsentDecision {
     Allowed,
-    Blocked { reason: String },
-    RequiresPrompt { stakes: ActionStakes, description: String },
+    Blocked {
+        reason: String,
+    },
+    RequiresPrompt {
+        stakes: ActionStakes,
+        description: String,
+    },
 }
 
 pub struct ConsentGate {
@@ -149,70 +154,58 @@ impl ConsentGate {
         Self { consent_manager }
     }
 
-    pub fn check_action(
-        &self,
-        action: &ActionType,
-        autonomy_level: &str,
-    ) -> ConsentDecision {
+    pub fn check_action(&self, action: &ActionType, autonomy_level: &str) -> ConsentDecision {
         let classification = ActionClassifier::classify(action);
         let request_kind = action_to_request_kind(action);
 
-        let resolution = self.consent_manager.authorize(request_kind, "automation:action");
+        let resolution = self
+            .consent_manager
+            .authorize(request_kind, "automation:action");
 
         match resolution {
             ConsentResolution::Granted(_) => ConsentDecision::Allowed,
             ConsentResolution::Denied => ConsentDecision::Blocked {
                 reason: "user has denied this type of action".into(),
             },
-            ConsentResolution::RequiresPrompt => {
-                match autonomy_level {
-                    "autonomous" => {
-                        match classification.stakes {
-                            ActionStakes::Low => ConsentDecision::Allowed,
-                            ActionStakes::Medium => {
-                                if classification.reversibility == Reversibility::Reversible {
-                                    ConsentDecision::Allowed
-                                } else {
-                                    ConsentDecision::RequiresPrompt {
-                                        stakes: classification.stakes,
-                                        description: classification.description,
-                                    }
-                                }
-                            }
-                            ActionStakes::High => ConsentDecision::RequiresPrompt {
+            ConsentResolution::RequiresPrompt => match autonomy_level {
+                "autonomous" => match classification.stakes {
+                    ActionStakes::Low => ConsentDecision::Allowed,
+                    ActionStakes::Medium => {
+                        if classification.reversibility == Reversibility::Reversible {
+                            ConsentDecision::Allowed
+                        } else {
+                            ConsentDecision::RequiresPrompt {
                                 stakes: classification.stakes,
                                 description: classification.description,
-                            },
-                        }
-                    }
-                    "moderate" => {
-                        match classification.stakes {
-                            ActionStakes::Low => {
-                                if classification.reversibility == Reversibility::Reversible {
-                                    ConsentDecision::Allowed
-                                } else {
-                                    ConsentDecision::RequiresPrompt {
-                                        stakes: classification.stakes,
-                                        description: classification.description,
-                                    }
-                                }
-                            }
-                            ActionStakes::Medium | ActionStakes::High => {
-                                ConsentDecision::RequiresPrompt {
-                                    stakes: classification.stakes,
-                                    description: classification.description,
-                                }
                             }
                         }
                     }
-                    _ => {
-                        ConsentDecision::RequiresPrompt {
-                            stakes: classification.stakes,
-                            description: classification.description,
+                    ActionStakes::High => ConsentDecision::RequiresPrompt {
+                        stakes: classification.stakes,
+                        description: classification.description,
+                    },
+                },
+                "moderate" => match classification.stakes {
+                    ActionStakes::Low => {
+                        if classification.reversibility == Reversibility::Reversible {
+                            ConsentDecision::Allowed
+                        } else {
+                            ConsentDecision::RequiresPrompt {
+                                stakes: classification.stakes,
+                                description: classification.description,
+                            }
                         }
                     }
-                }
-            }
+                    ActionStakes::Medium | ActionStakes::High => ConsentDecision::RequiresPrompt {
+                        stakes: classification.stakes,
+                        description: classification.description,
+                    },
+                },
+                _ => ConsentDecision::RequiresPrompt {
+                    stakes: classification.stakes,
+                    description: classification.description,
+                },
+            },
         }
     }
 
@@ -261,7 +254,10 @@ mod tests {
         };
         let decision = gate.check_action(&action, "autonomous");
         match decision {
-            ConsentDecision::RequiresPrompt { stakes: ActionStakes::High, .. } => {}
+            ConsentDecision::RequiresPrompt {
+                stakes: ActionStakes::High,
+                ..
+            } => {}
             other => panic!("expected RequiresPrompt(High), got {other:?}"),
         }
     }
@@ -292,7 +288,9 @@ mod tests {
 
     #[test]
     fn test_classifier_low_stakes() {
-        let c = ActionClassifier::classify(&ActionType::Speak { text: "hello".into() });
+        let c = ActionClassifier::classify(&ActionType::Speak {
+            text: "hello".into(),
+        });
         assert_eq!(c.stakes, ActionStakes::Low);
         assert_eq!(c.reversibility, Reversibility::Reversible);
     }
@@ -308,7 +306,9 @@ mod tests {
 
     #[test]
     fn test_classifier_screen_actions_high() {
-        let c = ActionClassifier::classify(&ActionType::ClickScreenElement { query: "btn".into() });
+        let c = ActionClassifier::classify(&ActionType::ClickScreenElement {
+            query: "btn".into(),
+        });
         assert_eq!(c.stakes, ActionStakes::High);
         assert_eq!(c.reversibility, Reversibility::Irreversible);
     }

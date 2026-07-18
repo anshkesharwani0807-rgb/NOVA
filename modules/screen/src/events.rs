@@ -95,22 +95,51 @@ impl ScreenEvent {
             ScreenEventPayload::CaptureStopped { frames_captured } => {
                 format!("Screen capture stopped: {frames_captured} frames")
             }
-            ScreenEventPayload::FrameCaptured { frame_id, width, height, size_bytes } => {
+            ScreenEventPayload::FrameCaptured {
+                frame_id,
+                width,
+                height,
+                size_bytes,
+            } => {
                 format!("Frame {frame_id}: {width}x{height} ({size_bytes} bytes)")
             }
-            ScreenEventPayload::OcrCompleted { text_len, confidence, language, duration_ms } => {
+            ScreenEventPayload::OcrCompleted {
+                text_len,
+                confidence,
+                language,
+                duration_ms,
+            } => {
                 format!("OCR ({language}): {text_len} chars at {confidence:.2} in {duration_ms}ms")
             }
-            ScreenEventPayload::UITreeExtracted { element_count, depth, duration_ms } => {
+            ScreenEventPayload::UITreeExtracted {
+                element_count,
+                depth,
+                duration_ms,
+            } => {
                 format!("UI tree: {element_count} elements, depth {depth} in {duration_ms}ms")
             }
-            ScreenEventPayload::GroundingCompleted { query, results, confidence, duration_ms } => {
-                format!("Grounding '{query}': {results} results at {confidence:.2} in {duration_ms}ms")
+            ScreenEventPayload::GroundingCompleted {
+                query,
+                results,
+                confidence,
+                duration_ms,
+            } => {
+                format!(
+                    "Grounding '{query}': {results} results at {confidence:.2} in {duration_ms}ms"
+                )
             }
-            ScreenEventPayload::ElementFound { element_id, element_type, confidence } => {
+            ScreenEventPayload::ElementFound {
+                element_id,
+                element_type,
+                confidence,
+            } => {
                 format!("Element {element_id} ({element_type}) at {confidence:.2}")
             }
-            ScreenEventPayload::ScreenToolInvoked { tool, duration_ms, success } => {
+            ScreenEventPayload::ScreenToolInvoked {
+                tool,
+                duration_ms,
+                success,
+            } => {
                 format!("Tool '{tool}': {duration_ms}ms, success={success}")
             }
             ScreenEventPayload::AnalysisStarted { reason } => {

@@ -1,10 +1,10 @@
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-use nova_screen::{GroundingQuery, ScreenEngine, ScreenInputBridge};
 use nova_input::InputEngine;
+use nova_screen::{GroundingQuery, ScreenEngine, ScreenInputBridge};
 
-use crate::action::{ActionExecutor, ActionResult, DefaultActionExecutor, ActionType};
+use crate::action::{ActionExecutor, ActionResult, ActionType, DefaultActionExecutor};
 
 fn screen_err(e: nova_screen::ScreenError) -> String {
     format!("screen error: {e}")
@@ -73,7 +73,10 @@ impl ComputerController {
         };
 
         let bridge = ScreenInputBridge::new(input);
-        let result = bridge.click_ocr_text(&ocr, target).await.map_err(input_err)?;
+        let result = bridge
+            .click_ocr_text(&ocr, target)
+            .await
+            .map_err(input_err)?;
         if result.success {
             Ok(ActionResult::success(format!("clicked '{}'", target)))
         } else {
@@ -103,10 +106,15 @@ impl ComputerController {
         };
 
         let bridge = ScreenInputBridge::new(input);
-        let result = bridge.focus_and_type(&grounding.element, text).await
+        let result = bridge
+            .focus_and_type(&grounding.element, text)
+            .await
             .map_err(input_err)?;
         if result.success {
-            Ok(ActionResult::success(format!("typed '{}' into '{}'", text, target)))
+            Ok(ActionResult::success(format!(
+                "typed '{}' into '{}'",
+                text, target
+            )))
         } else {
             Err(format!("type failed: {}", result.detail))
         }
@@ -144,10 +152,15 @@ impl ComputerController {
             };
 
             if ocr.text.contains(target) {
-                let result = bridge.click_ocr_text(&ocr, target).await
+                let result = bridge
+                    .click_ocr_text(&ocr, target)
+                    .await
                     .map_err(input_err)?;
                 if result.success {
-                    return Ok(ActionResult::success(format!("found and clicked '{}' after scroll {attempt}", target)));
+                    return Ok(ActionResult::success(format!(
+                        "found and clicked '{}' after scroll {attempt}",
+                        target
+                    )));
                 }
             }
 
@@ -176,14 +189,11 @@ impl ComputerController {
         for (i, step) in path.iter().enumerate() {
             match step {
                 NavigationStep::ClickText(text) => {
-                    self.click_text(text).await.map_err(|e| {
-                        format!("navigation step {i} (click '{text}') failed: {e}")
-                    })?;
+                    self.click_text(text)
+                        .await
+                        .map_err(|e| format!("navigation step {i} (click '{text}') failed: {e}"))?;
                 }
-                NavigationStep::TypeText {
-                    target,
-                    text,
-                } => {
+                NavigationStep::TypeText { target, text } => {
                     self.type_text(target, text).await.map_err(|e| {
                         format!("navigation step {i} (type into '{target}') failed: {e}")
                     })?;
@@ -242,8 +252,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_open_app_fallback() {
-        let ctrl = ComputerController::new()
-            .with_input(Arc::new(MockInputProvider::new()));
+        let ctrl = ComputerController::new().with_input(Arc::new(MockInputProvider::new()));
         let result = ctrl.open_app("Calculator").await;
         assert!(result.is_ok());
     }

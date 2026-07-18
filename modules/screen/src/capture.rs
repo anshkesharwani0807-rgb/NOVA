@@ -1,6 +1,6 @@
 //! Screen capture traits and platform implementations
 
-use crate::{ScreenCaptureConfig, CapturedFrame, ScreenResult};
+use crate::{CapturedFrame, ScreenCaptureConfig, ScreenResult};
 use async_trait::async_trait;
 
 /// Screen capture trait
@@ -11,7 +11,10 @@ pub trait ScreenCapture: Send + Sync {
     async fn start_capture(&mut self, config: ScreenCaptureConfig) -> ScreenResult<()>;
     async fn stop_capture(&mut self) -> ScreenResult<()>;
     async fn capture_frame(&mut self) -> ScreenResult<CapturedFrame>;
-    async fn start_stream(&mut self, tx: tokio::sync::mpsc::Sender<CapturedFrame>) -> ScreenResult<()>;
+    async fn start_stream(
+        &mut self,
+        tx: tokio::sync::mpsc::Sender<CapturedFrame>,
+    ) -> ScreenResult<()>;
     fn is_capturing(&self) -> bool;
 }
 
@@ -69,7 +72,10 @@ mod stub {
             Err(ScreenError::UnsupportedPlatform)
         }
 
-        async fn start_stream(&mut self, _tx: tokio::sync::mpsc::Sender<CapturedFrame>) -> ScreenResult<()> {
+        async fn start_stream(
+            &mut self,
+            _tx: tokio::sync::mpsc::Sender<CapturedFrame>,
+        ) -> ScreenResult<()> {
             Err(ScreenError::UnsupportedPlatform)
         }
 

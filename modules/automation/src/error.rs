@@ -16,14 +16,8 @@ pub enum AutomationError {
     MissingDependency(String),
     WorkflowDisabled(String),
     StepExecutionFailed { step: usize, reason: String },
-    ElementNotFound {
-        query: String,
-        suggestion: String,
-    },
-    StepTimeout {
-        step: usize,
-        timeout_ms: u64,
-    },
+    ElementNotFound { query: String, suggestion: String },
+    StepTimeout { step: usize, timeout_ms: u64 },
     Internal(String),
 }
 

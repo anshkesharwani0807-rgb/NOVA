@@ -21,12 +21,12 @@ use nova_kernel::{
     get_config, get_recent_activity, get_recent_egress, ConsentGrant, EgressPolicy, EgressRequest,
     EventMetadata, Kernel, KernelModule, NovaEvent, RequestKind,
 };
-use nova_screen::ScreenSystem;
 use nova_knowledge::{EntitySource, EntityType, KnowledgeEngine};
 use nova_memory::{MemoryCategory, MemoryEngine, MemoryRecord, Query, SortBy};
 use nova_pairing::PairingManager;
 use nova_plugin_host::PluginHost;
 use nova_plugin_sdk::{Plugin, PluginContext, PluginManager, PluginManifest};
+use nova_screen::ScreenSystem;
 use nova_search::UniversalSearch;
 use nova_security::{PermissionManager, SecurityManager};
 use nova_sync::SyncManager;
@@ -930,15 +930,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("     disconnected     : phone-1");
 
     // 7g) M19 — Task Execution & Computer Control (real executors + consent gate + task API).
-    println!("\n[7g] M19 — Task Execution & Computer Control (real executors + consent + task API):");
+    println!(
+        "\n[7g] M19 — Task Execution & Computer Control (real executors + consent + task API):"
+    );
 
     // Consent Gate demo — classify actions and check autonomy dial.
     use nova_automation::{ActionClassifier, ActionStakes, ConsentGate, Reversibility};
     let consent = Arc::new(nova_kernel::ConsentManager::new());
     let gate = ConsentGate::new(consent.clone());
 
-    let speak_action = ActionType::Speak { text: "hello".into() };
-    let click_action = ActionType::ClickScreenElement { query: "btn".into() };
+    let speak_action = ActionType::Speak {
+        text: "hello".into(),
+    };
+    let click_action = ActionType::ClickScreenElement {
+        query: "btn".into(),
+    };
     let device_action = ActionType::DeviceControl {
         control: nova_automation::DeviceControl::LockScreen,
     };
@@ -947,9 +953,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let c2 = gate.check_action(&click_action, "conservative");
     let c3 = gate.check_action(&device_action, "autonomous");
 
-    println!("     consent (speak, autonomous)      : {:?}", decision_label(&c1));
-    println!("     consent (click, conservative)     : {:?}", decision_label(&c2));
-    println!("     consent (lock, autonomous)        : {:?}", decision_label(&c3));
+    println!(
+        "     consent (speak, autonomous)      : {:?}",
+        decision_label(&c1)
+    );
+    println!(
+        "     consent (click, conservative)     : {:?}",
+        decision_label(&c2)
+    );
+    println!(
+        "     consent (lock, autonomous)        : {:?}",
+        decision_label(&c3)
+    );
 
     // Classification demo.
     let cls = ActionClassifier::classify(&device_action);
@@ -967,21 +982,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         nova_kernel::ConsentGrant::AlwaysAllow,
     );
     let c4 = gate.check_action(&device_action, "conservative");
-    println!("     after grant (lock, conservative)  : {:?}", decision_label(&c4));
+    println!(
+        "     after grant (lock, conservative)  : {:?}",
+        decision_label(&c4)
+    );
 
     // ComputerController demo — show wiring and fallback behavior.
     let controller = nova_automation::ComputerController::new();
 
     // Wire screen engine if available.
     if let Some(screen_mod) = kernel.registry.lookup("screen") {
-        println!("     controller  : screen module available ({})", screen_mod.module_id());
+        println!(
+            "     controller  : screen module available ({})",
+            screen_mod.module_id()
+        );
     }
     if let Some(input_mod) = kernel.registry.lookup("input") {
-        println!("     controller  : input module available ({})", input_mod.module_id());
+        println!(
+            "     controller  : input module available ({})",
+            input_mod.module_id()
+        );
     }
 
     // Test open_app fallback (works without screen).
-    let app_result = controller.open_app("Calculator").await
+    let app_result = controller
+        .open_app("Calculator")
+        .await
         .unwrap_or_else(nova_automation::ActionResult::failure);
     println!(
         "     open_app('Calculator')         : {} — {}",
@@ -990,7 +1016,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Test navigate with empty path.
-    let nav_result = controller.navigate(&[]).await
+    let nav_result = controller
+        .navigate(&[])
+        .await
         .unwrap_or_else(nova_automation::ActionResult::failure);
     println!(
         "     navigate(empty)                : {} — {}",

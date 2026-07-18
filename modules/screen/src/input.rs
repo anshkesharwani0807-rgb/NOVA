@@ -3,9 +3,7 @@ use nova_input::{KeyboardAction, MouseAction, MouseButton, TouchAction};
 use std::sync::Arc;
 
 use crate::error::ScreenError;
-use crate::types::{
-    GroundingResult, OCRResult, Point, Rect, UIElementRef, UIElementType,
-};
+use crate::types::{GroundingResult, OCRResult, Point, Rect, UIElementRef, UIElementType};
 
 /// Validated actionable target derived from screen understanding.
 #[derive(Debug, Clone)]
@@ -18,14 +16,33 @@ pub enum ScreenInputTarget {
 /// Screen-aware input action combining a target and an interaction type.
 #[derive(Debug, Clone)]
 pub enum ScreenInputAction {
-    Click { target: ScreenInputTarget },
-    DoubleClick { target: ScreenInputTarget },
-    RightClick { target: ScreenInputTarget },
-    DragTo { from: ScreenInputTarget, to: ScreenInputTarget },
-    FocusAndType { target: ScreenInputTarget, text: String },
-    Tap { target: ScreenInputTarget },
-    SwipeTo { from: ScreenInputTarget, to: ScreenInputTarget },
-    TypeText { text: String },
+    Click {
+        target: ScreenInputTarget,
+    },
+    DoubleClick {
+        target: ScreenInputTarget,
+    },
+    RightClick {
+        target: ScreenInputTarget,
+    },
+    DragTo {
+        from: ScreenInputTarget,
+        to: ScreenInputTarget,
+    },
+    FocusAndType {
+        target: ScreenInputTarget,
+        text: String,
+    },
+    Tap {
+        target: ScreenInputTarget,
+    },
+    SwipeTo {
+        from: ScreenInputTarget,
+        to: ScreenInputTarget,
+    },
+    TypeText {
+        text: String,
+    },
 }
 
 /// Extension trait adding convenience methods to nova_input types.
@@ -74,9 +91,10 @@ impl ScreenInputBridge {
 
     fn check_bounds(bounds: &Rect) -> Result<(), ScreenError> {
         if bounds.width == 0 || bounds.height == 0 {
-            return Err(ScreenError::InvalidRegion(
-                format!("element bounds are empty ({}x{})", bounds.width, bounds.height),
-            ));
+            return Err(ScreenError::InvalidRegion(format!(
+                "element bounds are empty ({}x{})",
+                bounds.width, bounds.height
+            )));
         }
         Ok(())
     }
@@ -144,9 +162,8 @@ impl ScreenInputBridge {
 
     /// Click at the center of the given `UIElementRef`.
     pub async fn click_element(&self, element: &UIElementRef) -> InputResult<ActionResult> {
-        Self::check_element_actionable(element).map_err(|e| {
-            InputError::ProviderError(format!("element not actionable: {e}"))
-        })?;
+        Self::check_element_actionable(element)
+            .map_err(|e| InputError::ProviderError(format!("element not actionable: {e}")))?;
         let point = Self::screen_point_to_input(element.bounds.center());
         self.engine
             .execute(&InputAction::Mouse(MouseAction::Click {
@@ -164,9 +181,8 @@ impl ScreenInputBridge {
 
     /// Click at the center of a bounding rectangle.
     pub async fn click_rect(&self, rect: &Rect) -> InputResult<ActionResult> {
-        Self::check_bounds(rect).map_err(|e| {
-            InputError::ProviderError(format!("invalid rect: {e}"))
-        })?;
+        Self::check_bounds(rect)
+            .map_err(|e| InputError::ProviderError(format!("invalid rect: {e}")))?;
         let point = Self::screen_point_to_input(rect.center());
         self.engine
             .execute(&InputAction::Mouse(MouseAction::Click {
@@ -179,9 +195,8 @@ impl ScreenInputBridge {
 
     /// Double-click at the center of the given element.
     pub async fn double_click_element(&self, element: &UIElementRef) -> InputResult<ActionResult> {
-        Self::check_element_actionable(element).map_err(|e| {
-            InputError::ProviderError(format!("element not actionable: {e}"))
-        })?;
+        Self::check_element_actionable(element)
+            .map_err(|e| InputError::ProviderError(format!("element not actionable: {e}")))?;
         let point = Self::screen_point_to_input(element.bounds.center());
         self.engine
             .execute(&InputAction::Mouse(MouseAction::Click {
@@ -194,9 +209,8 @@ impl ScreenInputBridge {
 
     /// Right-click at the center of the given element.
     pub async fn right_click_element(&self, element: &UIElementRef) -> InputResult<ActionResult> {
-        Self::check_element_actionable(element).map_err(|e| {
-            InputError::ProviderError(format!("element not actionable: {e}"))
-        })?;
+        Self::check_element_actionable(element)
+            .map_err(|e| InputError::ProviderError(format!("element not actionable: {e}")))?;
         let point = Self::screen_point_to_input(element.bounds.center());
         self.engine
             .execute(&InputAction::Mouse(MouseAction::Click {
@@ -213,9 +227,8 @@ impl ScreenInputBridge {
         element: &UIElementRef,
         text: &str,
     ) -> InputResult<ActionResult> {
-        Self::check_element_text_input(element).map_err(|e| {
-            InputError::ProviderError(format!("cannot type into element: {e}"))
-        })?;
+        Self::check_element_text_input(element)
+            .map_err(|e| InputError::ProviderError(format!("cannot type into element: {e}")))?;
         // Click first to focus.
         self.click_element(element).await?;
         self.engine
@@ -259,9 +272,8 @@ impl ScreenInputBridge {
 
     /// Tap (touch) at the center of the given element.
     pub async fn tap_element(&self, element: &UIElementRef) -> InputResult<ActionResult> {
-        Self::check_element_actionable(element).map_err(|e| {
-            InputError::ProviderError(format!("element not actionable: {e}"))
-        })?;
+        Self::check_element_actionable(element)
+            .map_err(|e| InputError::ProviderError(format!("element not actionable: {e}")))?;
         let point = Self::screen_point_to_input(element.bounds.center());
         self.engine
             .execute(&InputAction::Touch(TouchAction::Tap { point }))
@@ -303,10 +315,8 @@ impl ScreenInputBridge {
     ) -> InputResult<ActionResult> {
         match action {
             ScreenInputAction::Click { target } => {
-                let point =
-                    Self::resolve_target_point(target).map_err(|e| {
-                        InputError::ProviderError(format!("invalid target: {e}"))
-                    })?;
+                let point = Self::resolve_target_point(target)
+                    .map_err(|e| InputError::ProviderError(format!("invalid target: {e}")))?;
                 self.engine
                     .execute(&InputAction::Mouse(MouseAction::Click {
                         point,
@@ -316,10 +326,8 @@ impl ScreenInputBridge {
                     .await
             }
             ScreenInputAction::DoubleClick { target } => {
-                let point =
-                    Self::resolve_target_point(target).map_err(|e| {
-                        InputError::ProviderError(format!("invalid target: {e}"))
-                    })?;
+                let point = Self::resolve_target_point(target)
+                    .map_err(|e| InputError::ProviderError(format!("invalid target: {e}")))?;
                 self.engine
                     .execute(&InputAction::Mouse(MouseAction::Click {
                         point,
@@ -329,10 +337,8 @@ impl ScreenInputBridge {
                     .await
             }
             ScreenInputAction::RightClick { target } => {
-                let point =
-                    Self::resolve_target_point(target).map_err(|e| {
-                        InputError::ProviderError(format!("invalid target: {e}"))
-                    })?;
+                let point = Self::resolve_target_point(target)
+                    .map_err(|e| InputError::ProviderError(format!("invalid target: {e}")))?;
                 self.engine
                     .execute(&InputAction::Mouse(MouseAction::Click {
                         point,
@@ -342,14 +348,10 @@ impl ScreenInputBridge {
                     .await
             }
             ScreenInputAction::DragTo { from, to } => {
-                let from_pt =
-                    Self::resolve_target_point(from).map_err(|e| {
-                        InputError::ProviderError(format!("invalid source: {e}"))
-                    })?;
-                let to_pt =
-                    Self::resolve_target_point(to).map_err(|e| {
-                        InputError::ProviderError(format!("invalid target: {e}"))
-                    })?;
+                let from_pt = Self::resolve_target_point(from)
+                    .map_err(|e| InputError::ProviderError(format!("invalid source: {e}")))?;
+                let to_pt = Self::resolve_target_point(to)
+                    .map_err(|e| InputError::ProviderError(format!("invalid target: {e}")))?;
                 self.engine
                     .execute(&InputAction::Mouse(MouseAction::Drag {
                         from: from_pt,
@@ -364,10 +366,8 @@ impl ScreenInputBridge {
                         InputError::ProviderError(format!("element not editable: {e}"))
                     })?;
                 }
-                let point =
-                    Self::resolve_target_point(target).map_err(|e| {
-                        InputError::ProviderError(format!("invalid target: {e}"))
-                    })?;
+                let point = Self::resolve_target_point(target)
+                    .map_err(|e| InputError::ProviderError(format!("invalid target: {e}")))?;
                 self.engine
                     .execute(&InputAction::Mouse(MouseAction::Click {
                         point,
@@ -382,23 +382,17 @@ impl ScreenInputBridge {
                     .await
             }
             ScreenInputAction::Tap { target } => {
-                let point =
-                    Self::resolve_target_point(target).map_err(|e| {
-                        InputError::ProviderError(format!("invalid target: {e}"))
-                    })?;
+                let point = Self::resolve_target_point(target)
+                    .map_err(|e| InputError::ProviderError(format!("invalid target: {e}")))?;
                 self.engine
                     .execute(&InputAction::Touch(TouchAction::Tap { point }))
                     .await
             }
             ScreenInputAction::SwipeTo { from, to } => {
-                let from_pt =
-                    Self::resolve_target_point(from).map_err(|e| {
-                        InputError::ProviderError(format!("invalid source: {e}"))
-                    })?;
-                let to_pt =
-                    Self::resolve_target_point(to).map_err(|e| {
-                        InputError::ProviderError(format!("invalid target: {e}"))
-                    })?;
+                let from_pt = Self::resolve_target_point(from)
+                    .map_err(|e| InputError::ProviderError(format!("invalid source: {e}")))?;
+                let to_pt = Self::resolve_target_point(to)
+                    .map_err(|e| InputError::ProviderError(format!("invalid target: {e}")))?;
                 self.engine
                     .execute(&InputAction::Touch(TouchAction::Swipe {
                         from: from_pt,
@@ -433,9 +427,7 @@ impl ScreenInputBridge {
             .iter()
             .find(|r| r.text.contains(text_substring))
             .ok_or_else(|| {
-                InputError::ProviderError(format!(
-                    "no OCR region contains \"{text_substring}\""
-                ))
+                InputError::ProviderError(format!("no OCR region contains \"{text_substring}\""))
             })?;
         self.click_rect(&region.bounds).await
     }
@@ -454,9 +446,8 @@ impl ScreenInputBridge {
                 ocr.regions.len().saturating_sub(1)
             ))
         })?;
-        Self::check_bounds(&region.bounds).map_err(|e| {
-            InputError::ProviderError(format!("invalid OCR region bounds: {e}"))
-        })?;
+        Self::check_bounds(&region.bounds)
+            .map_err(|e| InputError::ProviderError(format!("invalid OCR region bounds: {e}")))?;
         self.click_rect(&region.bounds).await?;
         self.engine
             .execute(&InputAction::Keyboard(KeyboardAction::TypeText {
@@ -477,7 +468,12 @@ mod tests {
         UIElementRef {
             element_id: "btn_ok".into(),
             element_type: UIElementType::Button,
-            bounds: Rect { x: 100, y: 200, width: 80, height: 30 },
+            bounds: Rect {
+                x: 100,
+                y: 200,
+                width: 80,
+                height: 30,
+            },
             text: Some("OK".into()),
             attributes: HashMap::new(),
         }
@@ -487,7 +483,12 @@ mod tests {
         UIElementRef {
             element_id: "txt_name".into(),
             element_type: UIElementType::Edit,
-            bounds: Rect { x: 50, y: 100, width: 200, height: 24 },
+            bounds: Rect {
+                x: 50,
+                y: 100,
+                width: 200,
+                height: 24,
+            },
             text: Some("".into()),
             attributes: HashMap::new(),
         }
@@ -497,7 +498,12 @@ mod tests {
         UIElementRef {
             element_id: "empty".into(),
             element_type: UIElementType::Pane,
-            bounds: Rect { x: 0, y: 0, width: 0, height: 0 },
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+            },
             text: None,
             attributes: HashMap::new(),
         }
@@ -520,17 +526,32 @@ mod tests {
                 OCRRegion {
                     text: "Hello".into(),
                     confidence: 0.95,
-                    bounds: Rect { x: 10, y: 10, width: 50, height: 20 },
+                    bounds: Rect {
+                        x: 10,
+                        y: 10,
+                        width: 50,
+                        height: 20,
+                    },
                 },
                 OCRRegion {
                     text: "World".into(),
                     confidence: 0.85,
-                    bounds: Rect { x: 70, y: 10, width: 60, height: 20 },
+                    bounds: Rect {
+                        x: 70,
+                        y: 10,
+                        width: 60,
+                        height: 20,
+                    },
                 },
                 OCRRegion {
                     text: "Submit".into(),
                     confidence: 0.9,
-                    bounds: Rect { x: 140, y: 10, width: 70, height: 20 },
+                    bounds: Rect {
+                        x: 140,
+                        y: 10,
+                        width: 70,
+                        height: 20,
+                    },
                 },
             ],
         }
@@ -573,7 +594,12 @@ mod tests {
     #[tokio::test]
     async fn test_click_rect() {
         let bridge = make_bridge();
-        let rect = Rect { x: 0, y: 0, width: 100, height: 50 };
+        let rect = Rect {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+        };
         let result = bridge.click_rect(&rect).await;
         assert!(result.is_ok());
     }
@@ -581,7 +607,12 @@ mod tests {
     #[tokio::test]
     async fn test_click_rect_zero_bounds_fails() {
         let bridge = make_bridge();
-        let rect = Rect { x: 0, y: 0, width: 0, height: 0 };
+        let rect = Rect {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        };
         let result = bridge.click_rect(&rect).await;
         assert!(result.is_err());
     }

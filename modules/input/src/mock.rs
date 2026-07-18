@@ -40,6 +40,9 @@ impl InputEngine for MockInputProvider {
     async fn execute(&self, action: &InputAction) -> InputResult<ActionResult> {
         self.executed.write().push(action.clone());
         tracing::info!("MockInputProvider executing {}", action.label());
-        Ok(ActionResult::success(format!("executed {} (mock)", action.label())))
+        Ok(ActionResult::success(format!(
+            "executed {} (mock)",
+            action.label()
+        )))
     }
 }

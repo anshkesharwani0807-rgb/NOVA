@@ -21,7 +21,10 @@ pub struct ScreenEngine {
 }
 
 impl ScreenEngine {
-    pub fn new(config: ScreenConfig, permissions: Arc<ScreenPermissionManager>) -> ScreenResult<Self> {
+    pub fn new(
+        config: ScreenConfig,
+        permissions: Arc<ScreenPermissionManager>,
+    ) -> ScreenResult<Self> {
         let capture = ScreenCaptureFactory::create()?;
         let ui_tree = ui_tree::create()?;
         let ocr = ocr::create()?;
@@ -49,7 +52,11 @@ impl ScreenEngine {
         self.ocr.recognize(frame).await
     }
 
-    pub async fn ground_element(&self, frame: &CapturedFrame, query: &GroundingQuery) -> ScreenResult<GroundingResult> {
+    pub async fn ground_element(
+        &self,
+        frame: &CapturedFrame,
+        query: &GroundingQuery,
+    ) -> ScreenResult<GroundingResult> {
         self.grounding.locate(frame, query).await
     }
 

@@ -1,9 +1,11 @@
-use crate::{GroundingQuery, GroundingResult, UIElementRef, CapturedFrame, Rect, UIElementType};
+use crate::{CapturedFrame, GroundingQuery, GroundingResult, Rect, UIElementRef, UIElementType};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
 #[cfg(target_os = "windows")]
-use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED};
+use windows::Win32::System::Com::{
+    CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
+};
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Accessibility::*;
 
@@ -223,14 +225,23 @@ fn score_match(query: &str, name: &str, auto_id: &str) -> (f32, String) {
 
     let query_tokens: Vec<&str> = q.split_whitespace().collect();
     if query_tokens.len() > 1 {
-        let matched = query_tokens.iter().filter(|t| n.contains(*t) || a.contains(*t)).count();
+        let matched = query_tokens
+            .iter()
+            .filter(|t| n.contains(*t) || a.contains(*t))
+            .count();
         if matched > 0 {
             let ratio = matched as f32 / query_tokens.len() as f32;
-            return (0.3 + ratio * 0.3, format!("Matched {matched}/{} query tokens", query_tokens.len()));
+            return (
+                0.3 + ratio * 0.3,
+                format!("Matched {matched}/{} query tokens", query_tokens.len()),
+            );
         }
     }
 
-    (0.1, format!("Weak match: query \"{query}\" vs name \"{name}\""))
+    (
+        0.1,
+        format!("Weak match: query \"{query}\" vs name \"{name}\""),
+    )
 }
 
 #[async_trait]
@@ -240,7 +251,11 @@ impl crate::VisualGrounding for WindowsVisualGrounding {
         "windows-uia-grounding"
     }
 
-    async fn locate(&self, _frame: &CapturedFrame, query: &GroundingQuery) -> crate::ScreenResult<GroundingResult> {
+    async fn locate(
+        &self,
+        _frame: &CapturedFrame,
+        query: &GroundingQuery,
+    ) -> crate::ScreenResult<GroundingResult> {
         let mut results = Vec::new();
         unsafe {
             let root = self.automation.GetRootElement()?;
@@ -255,15 +270,29 @@ impl crate::VisualGrounding for WindowsVisualGrounding {
         })
     }
 
-    async fn locate_all(&self, _frame: &CapturedFrame, query: &GroundingQuery) -> crate::ScreenResult<Vec<GroundingResult>> {
+    async fn locate_all(
+        &self,
+        _frame: &CapturedFrame,
+        query: &GroundingQuery,
+    ) -> crate::ScreenResult<Vec<GroundingResult>> {
         let mut results = Vec::new();
         unsafe {
             let root = self.automation.GetRootElement()?;
             let walker = self.automation.ControlViewWalker()?;
-            self.walk_tree(&root, query, &mut results, query.max_results.max(1), &walker)?;
+            self.walk_tree(
+                &root,
+                query,
+                &mut results,
+                query.max_results.max(1),
+                &walker,
+            )?;
         }
         // Sort descending by confidence
-        results.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(results)
     }
 }
@@ -283,7 +312,10 @@ use jni::objects::{GlobalRef, JObject, JValue};
 use jni::JNIEnv;
 
 #[cfg(target_os = "android")]
-fn local_ref<'local>(env: &JNIEnv<'local>, global: &GlobalRef) -> crate::ScreenResult<JObject<'local>> {
+fn local_ref<'local>(
+    env: &JNIEnv<'local>,
+    global: &GlobalRef,
+) -> crate::ScreenResult<JObject<'local>> {
     unsafe { env.new_local_ref(global.as_obj()) }
         .map_err(|_| crate::ScreenError::PlatformError("new_local_ref failed".into()))
 }
@@ -294,9 +326,7 @@ fn obj_to_string(env: &JNIEnv, obj: &JObject) -> String {
         return String::new();
     }
     let js = unsafe { jni::objects::JString::from_raw(obj.as_raw()) };
-    env.get_string(&js)
-        .map(|s| s.into())
-        .unwrap_or_default()
+    env.get_string(&js).map(|s| s.into()).unwrap_or_default()
 }
 
 #[cfg(target_os = "android")]
@@ -305,9 +335,14 @@ fn class_name_to_element_type(class_name: &str) -> UIElementType {
         "android.widget.Button" | "android.widget.ImageButton" => UIElementType::Button,
         "android.widget.EditText" | "android.widget.AutoCompleteTextView" => UIElementType::Edit,
         "android.widget.CheckBox" | "android.widget.Switch" => UIElementType::CheckBox,
-        "android.widget.Spinner" | "android.widget.ListView" | "android.widget.GridView" => UIElementType::List,
-        "android.widget.ScrollView" | "android.widget.FrameLayout" | "android.widget.LinearLayout"
-        | "android.widget.RelativeLayout" | "android.widget.ConstraintLayout" => UIElementType::Pane,
+        "android.widget.Spinner" | "android.widget.ListView" | "android.widget.GridView" => {
+            UIElementType::List
+        }
+        "android.widget.ScrollView"
+        | "android.widget.FrameLayout"
+        | "android.widget.LinearLayout"
+        | "android.widget.RelativeLayout"
+        | "android.widget.ConstraintLayout" => UIElementType::Pane,
         "android.widget.ImageView" => UIElementType::Image,
         "android.widget.ProgressBar" | "android.widget.SeekBar" => UIElementType::Slider,
         "android.widget.RadioButton" => UIElementType::RadioButton,
@@ -333,9 +368,7 @@ impl AndroidVisualGrounding {
     pub fn new() -> crate::ScreenResult<Self> {
         let java_vm = unsafe {
             let vm_ptr = jni::sys::JNI_GetCreatedJavaVMs().map_err(|_| {
-                crate::ScreenError::PlatformError(
-                    "No Java VM — Android runtime not started".into(),
-                )
+                crate::ScreenError::PlatformError("No Java VM — Android runtime not started".into())
             })?;
             jni::JavaVM::from_raw(vm_ptr.0 as *mut jni::sys::JavaVM).map_err(|_| {
                 crate::ScreenError::PlatformError("Failed to wrap JavaVM handle".into())
@@ -386,10 +419,15 @@ impl AndroidVisualGrounding {
 
         let content_desc = obj_to_string(
             env,
-            &env.call_method(node, "getContentDescription", "()Ljava/lang/CharSequence;", &[])
-                .ok()
-                .and_then(|v| v.l().ok())
-                .unwrap_or_else(JObject::null),
+            &env.call_method(
+                node,
+                "getContentDescription",
+                "()Ljava/lang/CharSequence;",
+                &[],
+            )
+            .ok()
+            .and_then(|v| v.l().ok())
+            .unwrap_or_else(JObject::null),
         );
 
         let view_id = obj_to_string(
@@ -410,7 +448,12 @@ impl AndroidVisualGrounding {
 
         // --- Match against query -------------------------------------------
         let q_lower = query.query.trim().to_lowercase();
-        let candidates = [text.as_str(), content_desc.as_str(), view_id.as_str(), class_name.as_str()];
+        let candidates = [
+            text.as_str(),
+            content_desc.as_str(),
+            view_id.as_str(),
+            class_name.as_str(),
+        ];
         let mut best_conf: f32 = 0.0;
         let mut best_reason = String::new();
         let mut best_field = String::new();
@@ -449,10 +492,26 @@ impl AndroidVisualGrounding {
             .ok();
         }
         let (l, t, r, b) = if !rect_obj.is_null() {
-            let left = env.get_field(&rect_obj, "left", "I").ok().and_then(|v| v.i().ok()).unwrap_or(0);
-            let top = env.get_field(&rect_obj, "top", "I").ok().and_then(|v| v.i().ok()).unwrap_or(0);
-            let right = env.get_field(&rect_obj, "right", "I").ok().and_then(|v| v.i().ok()).unwrap_or(0);
-            let bottom = env.get_field(&rect_obj, "bottom", "I").ok().and_then(|v| v.i().ok()).unwrap_or(0);
+            let left = env
+                .get_field(&rect_obj, "left", "I")
+                .ok()
+                .and_then(|v| v.i().ok())
+                .unwrap_or(0);
+            let top = env
+                .get_field(&rect_obj, "top", "I")
+                .ok()
+                .and_then(|v| v.i().ok())
+                .unwrap_or(0);
+            let right = env
+                .get_field(&rect_obj, "right", "I")
+                .ok()
+                .and_then(|v| v.i().ok())
+                .unwrap_or(0);
+            let bottom = env
+                .get_field(&rect_obj, "bottom", "I")
+                .ok()
+                .and_then(|v| v.i().ok())
+                .unwrap_or(0);
             (left, top, right, bottom)
         } else {
             (0, 0, 0, 0)
@@ -532,7 +591,9 @@ impl AndroidVisualGrounding {
 
         // --- Recurse into children -----------------------------------------
         if results.len() < query.max_results.max(1) && depth < MAX_DEPTH {
-            let max_children = child_jobjects.len().min(MAX_NODES.saturating_sub(results.len()));
+            let max_children = child_jobjects
+                .len()
+                .min(MAX_NODES.saturating_sub(results.len()));
             for child in child_jobjects.into_iter().take(max_children) {
                 self.walk_tree(env, &child, query, results, depth + 1);
                 // child is recycled inside walk_tree (or at the top if depth limit hit)
@@ -553,10 +614,15 @@ impl crate::VisualGrounding for AndroidVisualGrounding {
         "android-accessibility-grounding"
     }
 
-    async fn locate(&self, _frame: &CapturedFrame, query: &GroundingQuery) -> crate::ScreenResult<GroundingResult> {
+    async fn locate(
+        &self,
+        _frame: &CapturedFrame,
+        query: &GroundingQuery,
+    ) -> crate::ScreenResult<GroundingResult> {
         let as_ref = crate::ui_tree::get_accessibility_service().ok_or(
             crate::ScreenError::GroundingFailed(
-                "AccessibilityService not set — Kotlin must call nativeSetAccessibilityService".into(),
+                "AccessibilityService not set — Kotlin must call nativeSetAccessibilityService"
+                    .into(),
             ),
         )?;
 
@@ -595,10 +661,15 @@ impl crate::VisualGrounding for AndroidVisualGrounding {
         })
     }
 
-    async fn locate_all(&self, _frame: &CapturedFrame, query: &GroundingQuery) -> crate::ScreenResult<Vec<GroundingResult>> {
+    async fn locate_all(
+        &self,
+        _frame: &CapturedFrame,
+        query: &GroundingQuery,
+    ) -> crate::ScreenResult<Vec<GroundingResult>> {
         let as_ref = crate::ui_tree::get_accessibility_service().ok_or(
             crate::ScreenError::GroundingFailed(
-                "AccessibilityService not set — Kotlin must call nativeSetAccessibilityService".into(),
+                "AccessibilityService not set — Kotlin must call nativeSetAccessibilityService"
+                    .into(),
             ),
         )?;
 
@@ -621,7 +692,11 @@ impl crate::VisualGrounding for AndroidVisualGrounding {
         let mut results = Vec::new();
         self.walk_tree(&env, &root, query, &mut results, 0);
 
-        results.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(results)
     }
 }

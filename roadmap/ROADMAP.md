@@ -506,7 +506,7 @@ task-oriented ComputerController API, error recovery with retry, and demo integr
 
 ---
 
-## Milestone 20 — Autonomous Planning & World State Management (IN PROGRESS)
+## Milestone 20 — Autonomous Planning & World State Management (COMPLETE ✅)
 
 **Objective:** Build the autonomous planning subsystem (goal decomposition, execution plans,
 dependency graph) and the world state subsystem (live device environment model).
@@ -522,13 +522,22 @@ dependency graph) and the world state subsystem (live device environment model).
 - 23 unit tests across all goal patterns and graph operations
 
 **Deliverables (Subsystem 2 — World State):**
-- (Pending)
+- `world_state.rs` — `WorldState`, `WorldSnapshot`, `WorldStateConfig`, `DeviceTelemetry`,
+  `NetworkState`, `WorldDiff`, `WorldSubscription`, `DeviceTelemetryCollector` trait,
+  `NullDeviceTelemetryCollector`
+- Device state (battery, charging, Wi-Fi, Bluetooth), network state (online/offline, type)
+- Diff tracking with `compare_snapshots()` detecting changes across all 7 state categories
+- Subscriptions with thread-safe callbacks, `subscribe`/`unsubscribe`, unique IDs
+- Permissions/privacy filtering via `redacted_snapshot()` with configurable OCR/frame/UI redaction
+- 48 unit tests (22 original + 26 new for S2 features)
 
 **Exit Criteria:**
-- `cargo test -p nova_automation` — planner tests pass
-- `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings
-- `cargo fmt --all -- --check` — clean
-- No M1-M19 regressions
+- ✅ `cargo test -p nova_automation` — all planner + world state tests pass (71 total)
+- ✅ `cargo check --workspace` — 0 errors
+- ✅ `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings
+- ✅ `cargo fmt --all -- --check` — clean
+- ✅ `cargo test --workspace` — all pass
+- ✅ No M1-M19 regressions
 
 ---
 
@@ -541,4 +550,4 @@ dependency graph) and the world state subsystem (live device environment model).
 
 ---
 
-*Roadmap version: 1.4. All milestones M1-M19 exit criteria verified. M20 S1 complete.*
+*Roadmap version: 1.5. All milestones M1-M20 exit criteria verified.*

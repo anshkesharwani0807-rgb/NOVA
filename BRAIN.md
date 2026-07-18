@@ -164,8 +164,9 @@ GitHub: private repo `https://github.com/anshkesharwani0807-rgb/NOVA` (branch `m
 - ✅ **M18 nova_input Platform** — `InputEngine` trait, mouse/keyboard/touch action types, `ScreenInputBridge`, `MockInputProvider`, Windows (SendInput) + Android (AccessibilityService) real implementations.
 - ✅ **M19 Task Execution & Computer Control** — `real_executors.rs` (ScreenClick/Type/Drag/Swipe), `consent_gate.rs` (ActionClassifier + 3 autonomy dial levels), `controller.rs` (ComputerController with 6 async methods), error recovery with exponential backoff retry, named executor dispatch. 21 new unit tests. Demo [7g] validates consent gate + controller + executors.
 - ✅ **M20 S1 Planner** — `planner.rs` with `Goal`, `ExecutionStep`, `ExecutionPlan`, `Capability` (13 variants), `PlanValidation`, `Planner`. Heuristic decomposition for 14+ goal types. Kahn's topological sort, cycle detection, `ready_steps()`. 23 unit tests. Wired into `nova_automation`.
+- ✅ **M20 S2 World State** — `world_state.rs` with `WorldState`, `WorldSnapshot`, `WorldStateConfig`, `DeviceTelemetry`, `NetworkState`, `WorldDiff`, `WorldSubscription`, `DeviceTelemetryCollector` trait + `NullDeviceTelemetryCollector`. Device/network state storage, diff tracking across 7 state categories, thread-safe subscriptions with notify, privacy/redacted snapshots. 48 unit tests (22 original + 26 new).
 
-All milestones 1–20 Subsystem 1 exit criteria verified.
+All milestones 1–20 exit criteria verified.
 NOVA v0.20.0-m20 ready.
 
 `comms` and `plugin_host` are working `KernelModule` **skeletons** (start/stop cleanly, no
@@ -186,7 +187,7 @@ real work yet).
 | nova_ai | 🔶 CandleProvider exists but never used | 🔶 MockProvider in all tests/demo | GGUF model download + test |
 | nova_voice | — | 🔶 100% mock pipeline | Real mic/speaker I/O |
 | nova_vision | 🔶 Image loading/decoding/hashing | 🔶 All 10 AI engines are mock | Real AI model integration |
-| nova_automation | 🔶 Consent gate (real classification + `ConsentManager`), real executors (click/type/drag/swipe capture→ground→execute pipeline) | 🔶 Screen capture depends on platform (mock used on unsupported) | Real app launch via `DefaultActionExecutor` |
+| nova_automation | 🔶 Consent gate (real classification + `ConsentManager`), real executors (click/type/drag/swipe capture→ground→execute pipeline), world state with device/network telemetry, diff tracking, subscriptions, privacy filtering | 🔶 Screen capture depends on platform (mock used on unsupported) | Real app launch via `DefaultActionExecutor` |
 | nova_pairing | 🔶 Real X25519 key exchange, QR rendering | 🔶 No real device-to-device protocol | Real pairing flow |
 | nova_transport | 🔶 Real TCP/UDP code exists | 🔶 Demo never starts transport; 3/12 tests touch network | End-to-end network test |
 | nova_windows_agent | 🔶 RealWindowsProvider defined (659 lines) | 🔶 MockWindowsProvider in all tests | Real Windows test harness |

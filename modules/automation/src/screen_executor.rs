@@ -1,14 +1,10 @@
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-use nova_screen::{
-    ScreenEngine, ScreenInputBridge, GroundingQuery, ScreenError,
-};
 use nova_input::InputEngine;
+use nova_screen::{GroundingQuery, ScreenEngine, ScreenError, ScreenInputBridge};
 
-use crate::action::{
-    ActionExecutor, ActionType, ActionResult, DefaultActionExecutor,
-};
+use crate::action::{ActionExecutor, ActionResult, ActionType, DefaultActionExecutor};
 
 /// An `ActionExecutor` that uses screen capture, visual grounding, and OCR
 /// to resolve screen-aware actions and delegates to the `InputEngine` for
@@ -68,181 +64,163 @@ impl ScreenAwareExecutor {
         let bridge = ScreenInputBridge::new(input);
 
         match action {
-            ActionType::ClickScreenElement { query } => {
-                Self::run_async(async {
-                    let frame = {
-                        let mut eng = screen.write();
-                        eng.capture_frame().await.map_err(Self::screen_err)?
+            ActionType::ClickScreenElement { query } => Self::run_async(async {
+                let frame = {
+                    let mut eng = screen.write();
+                    eng.capture_frame().await.map_err(Self::screen_err)?
+                };
+                let grounding = {
+                    let eng = screen.read();
+                    let gq = GroundingQuery {
+                        query: query.clone(),
+                        context: None,
+                        max_results: 1,
+                        confidence_threshold: 0.3,
                     };
-                    let grounding = {
-                        let eng = screen.read();
-                        let gq = GroundingQuery {
-                            query: query.clone(),
-                            context: None,
-                            max_results: 1,
-                            confidence_threshold: 0.3,
-                        };
-                        eng.ground_element(&frame, &gq)
-                            .await
-                            .map_err(Self::screen_err)?
-                    };
-                    bridge
-                        .click_grounded(&grounding)
+                    eng.ground_element(&frame, &gq)
                         .await
-                        .map_err(Self::input_err)?;
-                    Ok(format!(
-                        "clicked '{}' (confidence {:.2})",
-                        query, grounding.confidence
-                    ))
-                })
-                .map(ActionResult::success)
-                .unwrap_or_else(ActionResult::failure)
-            }
+                        .map_err(Self::screen_err)?
+                };
+                bridge
+                    .click_grounded(&grounding)
+                    .await
+                    .map_err(Self::input_err)?;
+                Ok(format!(
+                    "clicked '{}' (confidence {:.2})",
+                    query, grounding.confidence
+                ))
+            })
+            .map(ActionResult::success)
+            .unwrap_or_else(ActionResult::failure),
 
-            ActionType::TypeIntoScreenElement { query, text } => {
-                Self::run_async(async {
-                    let frame = {
-                        let mut eng = screen.write();
-                        eng.capture_frame().await.map_err(Self::screen_err)?
+            ActionType::TypeIntoScreenElement { query, text } => Self::run_async(async {
+                let frame = {
+                    let mut eng = screen.write();
+                    eng.capture_frame().await.map_err(Self::screen_err)?
+                };
+                let grounding = {
+                    let eng = screen.read();
+                    let gq = GroundingQuery {
+                        query: query.clone(),
+                        context: None,
+                        max_results: 1,
+                        confidence_threshold: 0.3,
                     };
-                    let grounding = {
-                        let eng = screen.read();
-                        let gq = GroundingQuery {
-                            query: query.clone(),
-                            context: None,
-                            max_results: 1,
-                            confidence_threshold: 0.3,
-                        };
-                        eng.ground_element(&frame, &gq)
-                            .await
-                            .map_err(Self::screen_err)?
-                    };
-                    bridge
-                        .focus_and_type(&grounding.element, text)
+                    eng.ground_element(&frame, &gq)
                         .await
-                        .map_err(Self::input_err)?;
-                    Ok(format!(
-                        "typed '{}' into '{}' (confidence {:.2})",
-                        text, query, grounding.confidence
-                    ))
-                })
-                .map(ActionResult::success)
-                .unwrap_or_else(ActionResult::failure)
-            }
+                        .map_err(Self::screen_err)?
+                };
+                bridge
+                    .focus_and_type(&grounding.element, text)
+                    .await
+                    .map_err(Self::input_err)?;
+                Ok(format!(
+                    "typed '{}' into '{}' (confidence {:.2})",
+                    text, query, grounding.confidence
+                ))
+            })
+            .map(ActionResult::success)
+            .unwrap_or_else(ActionResult::failure),
 
-            ActionType::ClickScreenText { text } => {
-                Self::run_async(async {
-                    let frame = {
-                        let mut eng = screen.write();
-                        eng.capture_frame().await.map_err(Self::screen_err)?
-                    };
-                    let ocr = {
-                        let eng = screen.read();
-                        eng.recognize_text(&frame)
-                            .await
-                            .map_err(Self::screen_err)?
-                    };
-                    bridge
-                        .click_ocr_text(&ocr, text)
-                        .await
-                        .map_err(Self::input_err)?;
-                    Ok(format!("clicked OCR text '{}'", text))
-                })
-                .map(ActionResult::success)
-                .unwrap_or_else(ActionResult::failure)
-            }
+            ActionType::ClickScreenText { text } => Self::run_async(async {
+                let frame = {
+                    let mut eng = screen.write();
+                    eng.capture_frame().await.map_err(Self::screen_err)?
+                };
+                let ocr = {
+                    let eng = screen.read();
+                    eng.recognize_text(&frame).await.map_err(Self::screen_err)?
+                };
+                bridge
+                    .click_ocr_text(&ocr, text)
+                    .await
+                    .map_err(Self::input_err)?;
+                Ok(format!("clicked OCR text '{}'", text))
+            })
+            .map(ActionResult::success)
+            .unwrap_or_else(ActionResult::failure),
 
             ActionType::DragScreenElements {
                 from_query,
                 to_query,
-            } => {
-                Self::run_async(async {
-                    let frame = {
-                        let mut eng = screen.write();
-                        eng.capture_frame().await.map_err(Self::screen_err)?
+            } => Self::run_async(async {
+                let frame = {
+                    let mut eng = screen.write();
+                    eng.capture_frame().await.map_err(Self::screen_err)?
+                };
+                let (from_g, to_g) = {
+                    let eng = screen.read();
+                    let gq_from = GroundingQuery {
+                        query: from_query.clone(),
+                        context: None,
+                        max_results: 1,
+                        confidence_threshold: 0.3,
                     };
-                    let (from_g, to_g) = {
-                        let eng = screen.read();
-                        let gq_from = GroundingQuery {
-                            query: from_query.clone(),
-                            context: None,
-                            max_results: 1,
-                            confidence_threshold: 0.3,
-                        };
-                        let gq_to = GroundingQuery {
-                            query: to_query.clone(),
-                            context: None,
-                            max_results: 1,
-                            confidence_threshold: 0.3,
-                        };
-                        let from = eng
-                            .ground_element(&frame, &gq_from)
-                            .await
-                            .map_err(Self::screen_err)?;
-                        let to = eng
-                            .ground_element(&frame, &gq_to)
-                            .await
-                            .map_err(Self::screen_err)?;
-                        (from, to)
+                    let gq_to = GroundingQuery {
+                        query: to_query.clone(),
+                        context: None,
+                        max_results: 1,
+                        confidence_threshold: 0.3,
                     };
-                    bridge
-                        .drag_element_to(&from_g.element, &to_g.element)
+                    let from = eng
+                        .ground_element(&frame, &gq_from)
                         .await
-                        .map_err(Self::input_err)?;
-                    Ok(format!(
-                        "dragged '{}' -> '{}'",
-                        from_query, to_query
-                    ))
-                })
-                .map(ActionResult::success)
-                .unwrap_or_else(ActionResult::failure)
-            }
+                        .map_err(Self::screen_err)?;
+                    let to = eng
+                        .ground_element(&frame, &gq_to)
+                        .await
+                        .map_err(Self::screen_err)?;
+                    (from, to)
+                };
+                bridge
+                    .drag_element_to(&from_g.element, &to_g.element)
+                    .await
+                    .map_err(Self::input_err)?;
+                Ok(format!("dragged '{}' -> '{}'", from_query, to_query))
+            })
+            .map(ActionResult::success)
+            .unwrap_or_else(ActionResult::failure),
 
             ActionType::SwipeScreenElements {
                 from_query,
                 to_query,
-            } => {
-                Self::run_async(async {
-                    let frame = {
-                        let mut eng = screen.write();
-                        eng.capture_frame().await.map_err(Self::screen_err)?
+            } => Self::run_async(async {
+                let frame = {
+                    let mut eng = screen.write();
+                    eng.capture_frame().await.map_err(Self::screen_err)?
+                };
+                let (from_g, to_g) = {
+                    let eng = screen.read();
+                    let gq_from = GroundingQuery {
+                        query: from_query.clone(),
+                        context: None,
+                        max_results: 1,
+                        confidence_threshold: 0.3,
                     };
-                    let (from_g, to_g) = {
-                        let eng = screen.read();
-                        let gq_from = GroundingQuery {
-                            query: from_query.clone(),
-                            context: None,
-                            max_results: 1,
-                            confidence_threshold: 0.3,
-                        };
-                        let gq_to = GroundingQuery {
-                            query: to_query.clone(),
-                            context: None,
-                            max_results: 1,
-                            confidence_threshold: 0.3,
-                        };
-                        let from = eng
-                            .ground_element(&frame, &gq_from)
-                            .await
-                            .map_err(Self::screen_err)?;
-                        let to = eng
-                            .ground_element(&frame, &gq_to)
-                            .await
-                            .map_err(Self::screen_err)?;
-                        (from, to)
+                    let gq_to = GroundingQuery {
+                        query: to_query.clone(),
+                        context: None,
+                        max_results: 1,
+                        confidence_threshold: 0.3,
                     };
-                    bridge
-                        .swipe_element_to(&from_g.element, &to_g.element)
+                    let from = eng
+                        .ground_element(&frame, &gq_from)
                         .await
-                        .map_err(Self::input_err)?;
-                    Ok(format!(
-                        "swiped '{}' -> '{}'",
-                        from_query, to_query
-                    ))
-                })
-                .map(ActionResult::success)
-                .unwrap_or_else(ActionResult::failure)
-            }
+                        .map_err(Self::screen_err)?;
+                    let to = eng
+                        .ground_element(&frame, &gq_to)
+                        .await
+                        .map_err(Self::screen_err)?;
+                    (from, to)
+                };
+                bridge
+                    .swipe_element_to(&from_g.element, &to_g.element)
+                    .await
+                    .map_err(Self::input_err)?;
+                Ok(format!("swiped '{}' -> '{}'", from_query, to_query))
+            })
+            .map(ActionResult::success)
+            .unwrap_or_else(ActionResult::failure),
 
             _ => {
                 let fallback = DefaultActionExecutor;

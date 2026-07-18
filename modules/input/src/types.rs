@@ -114,9 +114,7 @@ pub enum InputAction {
     Keyboard(KeyboardAction),
     Touch(TouchAction),
     Gesture(GestureAction),
-    Wait {
-        duration_ms: u64,
-    },
+    Wait { duration_ms: u64 },
 }
 
 impl InputAction {

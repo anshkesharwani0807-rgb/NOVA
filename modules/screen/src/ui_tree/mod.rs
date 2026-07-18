@@ -4,7 +4,9 @@ use crate::Rect;
 use async_trait::async_trait;
 use std::collections::HashMap;
 #[cfg(target_os = "windows")]
-use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED};
+use windows::Win32::System::Com::{
+    CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED,
+};
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Accessibility::*;
 
@@ -155,7 +157,10 @@ impl crate::UITreeExtractor for WindowsUITreeExtractor {
         "windows-uia"
     }
 
-    async fn extract_tree(&self, _frame: &crate::CapturedFrame) -> crate::ScreenResult<crate::UITree> {
+    async fn extract_tree(
+        &self,
+        _frame: &crate::CapturedFrame,
+    ) -> crate::ScreenResult<crate::UITree> {
         let root = unsafe { self.automation.GetRootElement()? };
         let element = unsafe { self.build_element(&root)? };
         Ok(crate::UITree {
@@ -175,8 +180,7 @@ impl crate::UITreeExtractor for WindowsUITreeExtractor {
         ) -> Option<crate::UIElementRef> {
             let name = element.name.as_deref().unwrap_or("");
             let text = element.text.as_deref().unwrap_or("");
-            let combined = format!("{} {}", name, text)
-                .to_lowercase();
+            let combined = format!("{} {}", name, text).to_lowercase();
             let q = query.query.to_lowercase();
             if combined.contains(&q) {
                 return Some(crate::UIElementRef {
@@ -197,10 +201,7 @@ impl crate::UITreeExtractor for WindowsUITreeExtractor {
         Ok(find_recursive(&tree.root, query))
     }
 
-    async fn get_element_bounds(
-        &self,
-        element: &crate::UIElementRef,
-    ) -> crate::ScreenResult<Rect> {
+    async fn get_element_bounds(&self, element: &crate::UIElementRef) -> crate::ScreenResult<Rect> {
         Ok(element.bounds)
     }
 }
@@ -244,9 +245,13 @@ pub fn has_accessibility_service() -> bool {
 }
 
 #[cfg(target_os = "android")]
-fn local_ref<'local>(env: &JNIEnv<'local>, global: &GlobalRef) -> crate::ScreenResult<JObject<'local>> {
-    unsafe { env.new_local_ref(global.as_obj()) }
-        .map_err(|_| crate::ScreenError::PlatformError("new_local_ref failed for AccessibilityService".into()))
+fn local_ref<'local>(
+    env: &JNIEnv<'local>,
+    global: &GlobalRef,
+) -> crate::ScreenResult<JObject<'local>> {
+    unsafe { env.new_local_ref(global.as_obj()) }.map_err(|_| {
+        crate::ScreenError::PlatformError("new_local_ref failed for AccessibilityService".into())
+    })
 }
 
 #[cfg(target_os = "android")]
@@ -278,20 +283,26 @@ fn class_name_to_element_type(class_name: &str) -> crate::UIElementType {
         | "android.widget.ListView"
         | "android.widget.GridView"
         | "android.widget.ExpandableListView" => crate::UIElementType::List,
-        "android.widget.ScrollView" | "android.widget.HorizontalScrollView"
-        | "android.widget.FrameLayout" | "android.widget.LinearLayout"
-        | "android.widget.RelativeLayout" | "android.widget.ConstraintLayout"
+        "android.widget.ScrollView"
+        | "android.widget.HorizontalScrollView"
+        | "android.widget.FrameLayout"
+        | "android.widget.LinearLayout"
+        | "android.widget.RelativeLayout"
+        | "android.widget.ConstraintLayout"
         | "android.view.ViewGroup" => crate::UIElementType::Pane,
         "android.widget.ImageView" | "android.widget.ImageSwitcher" => crate::UIElementType::Image,
-        "android.widget.ProgressBar" | "android.widget.SeekBar"
-        | "android.widget.RatingBar" => crate::UIElementType::Slider,
+        "android.widget.ProgressBar" | "android.widget.SeekBar" | "android.widget.RatingBar" => {
+            crate::UIElementType::Slider
+        }
         "android.widget.RadioButton" => crate::UIElementType::RadioButton,
         "android.widget.TabHost" | "android.widget.TabWidget" => crate::UIElementType::Tab,
-        "android.widget.Toolbar" | "android.widget.ActionMenuView"
+        "android.widget.Toolbar"
+        | "android.widget.ActionMenuView"
         | "android.widget.ActionMenuPresenter" => crate::UIElementType::Toolbar,
         "android.webkit.WebView" => crate::UIElementType::Document,
         "android.widget.TextView" => crate::UIElementType::TextBlock,
-        "android.widget.ListPopupWindow" | "android.widget.PopupWindow"
+        "android.widget.ListPopupWindow"
+        | "android.widget.PopupWindow"
         | "android.widget.PopupMenu" => crate::UIElementType::Menu,
         "android.widget.StatusBar" => crate::UIElementType::StatusBar,
         s if s.contains("Button") => crate::UIElementType::Button,
@@ -314,9 +325,7 @@ impl AndroidUITreeExtractor {
     pub fn new() -> crate::ScreenResult<Self> {
         let java_vm = unsafe {
             let vm_ptr = jni::sys::JNI_GetCreatedJavaVMs().map_err(|_| {
-                crate::ScreenError::PlatformError(
-                    "No Java VM — Android runtime not started".into(),
-                )
+                crate::ScreenError::PlatformError("No Java VM — Android runtime not started".into())
             })?;
             jni::JavaVM::from_raw(vm_ptr.0 as *mut jni::sys::JavaVM).map_err(|_| {
                 crate::ScreenError::PlatformError("Failed to wrap JavaVM handle".into())
@@ -368,7 +377,12 @@ impl AndroidUITreeExtractor {
             .filter(|s| !s.is_empty());
 
         let desc_cs = env
-            .call_method(node, "getContentDescription", "()Ljava/lang/CharSequence;", &[])
+            .call_method(
+                node,
+                "getContentDescription",
+                "()Ljava/lang/CharSequence;",
+                &[],
+            )
             .ok()
             .and_then(|v| v.l().ok());
         let content_desc = desc_cs
@@ -393,7 +407,10 @@ impl AndroidUITreeExtractor {
             .filter(|obj| !obj.is_null())
             .map(|s| {
                 let js = unsafe { jni::objects::JString::from_raw(s.into_raw()) };
-                env.get_string(&js).ok().map(|j| j.into()).unwrap_or_default()
+                env.get_string(&js)
+                    .ok()
+                    .map(|j| j.into())
+                    .unwrap_or_default()
             })
             .filter(|s: &String| !s.is_empty());
 
@@ -411,10 +428,26 @@ impl AndroidUITreeExtractor {
             .ok();
         }
         let (l, t, r, b) = if !rect.is_null() {
-            let left = env.get_field(&rect, "left", "I").ok().and_then(|v| v.i().ok()).unwrap_or(0);
-            let top = env.get_field(&rect, "top", "I").ok().and_then(|v| v.i().ok()).unwrap_or(0);
-            let right = env.get_field(&rect, "right", "I").ok().and_then(|v| v.i().ok()).unwrap_or(0);
-            let bottom = env.get_field(&rect, "bottom", "I").ok().and_then(|v| v.i().ok()).unwrap_or(0);
+            let left = env
+                .get_field(&rect, "left", "I")
+                .ok()
+                .and_then(|v| v.i().ok())
+                .unwrap_or(0);
+            let top = env
+                .get_field(&rect, "top", "I")
+                .ok()
+                .and_then(|v| v.i().ok())
+                .unwrap_or(0);
+            let right = env
+                .get_field(&rect, "right", "I")
+                .ok()
+                .and_then(|v| v.i().ok())
+                .unwrap_or(0);
+            let bottom = env
+                .get_field(&rect, "bottom", "I")
+                .ok()
+                .and_then(|v| v.i().ok())
+                .unwrap_or(0);
             (left, top, right, bottom)
         } else {
             (0, 0, 0, 0)
@@ -460,9 +493,9 @@ impl AndroidUITreeExtractor {
 
         let element_type = class_name_to_element_type(&class_name);
 
-        let element_id = view_id.clone().unwrap_or_else(|| {
-            uuid::Uuid::new_v4().to_string()
-        });
+        let element_id = view_id
+            .clone()
+            .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
         // --- Children --------------------------------------------------------
         let child_count: i32 = env
@@ -506,16 +539,13 @@ impl AndroidUITreeExtractor {
         }
 
         // Name = text or content_description or class_name
-        let name = text
-            .clone()
-            .or_else(|| content_desc.clone())
-            .or_else(|| {
-                if !class_name.is_empty() {
-                    Some(class_name.clone())
-                } else {
-                    None
-                }
-            });
+        let name = text.clone().or_else(|| content_desc.clone()).or_else(|| {
+            if !class_name.is_empty() {
+                Some(class_name.clone())
+            } else {
+                None
+            }
+        });
 
         Ok(crate::UIElement {
             element_id,
@@ -553,12 +583,16 @@ impl crate::UITreeExtractor for AndroidUITreeExtractor {
         "android-accessibility"
     }
 
-    async fn extract_tree(&self, _frame: &crate::CapturedFrame) -> crate::ScreenResult<crate::UITree> {
-        let as_ref = ACCESSIBILITY_SERVICE.get().ok_or(
-            crate::ScreenError::PlatformError(
-                "AccessibilityService not set — Kotlin must call nativeSetAccessibilityService".into(),
-            ),
-        )?;
+    async fn extract_tree(
+        &self,
+        _frame: &crate::CapturedFrame,
+    ) -> crate::ScreenResult<crate::UITree> {
+        let as_ref = ACCESSIBILITY_SERVICE
+            .get()
+            .ok_or(crate::ScreenError::PlatformError(
+                "AccessibilityService not set — Kotlin must call nativeSetAccessibilityService"
+                    .into(),
+            ))?;
 
         let env = self.get_env()?;
         let svc = local_ref(&env, as_ref)?;
@@ -598,7 +632,12 @@ impl crate::UITreeExtractor for AndroidUITreeExtractor {
         ) -> Option<crate::UIElementRef> {
             let name = element.name.as_deref().unwrap_or("");
             let text = element.text.as_deref().unwrap_or("");
-            let attrs: String = element.attributes.values().cloned().collect::<Vec<_>>().join(" ");
+            let attrs: String = element
+                .attributes
+                .values()
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(" ");
             let combined = format!("{} {} {}", name, text, attrs).to_lowercase();
             let q = query.query.to_lowercase();
             if combined.contains(&q) {
@@ -620,10 +659,7 @@ impl crate::UITreeExtractor for AndroidUITreeExtractor {
         Ok(find_recursive(&tree.root, query))
     }
 
-    async fn get_element_bounds(
-        &self,
-        element: &crate::UIElementRef,
-    ) -> crate::ScreenResult<Rect> {
+    async fn get_element_bounds(&self, element: &crate::UIElementRef) -> crate::ScreenResult<Rect> {
         Ok(element.bounds)
     }
 }

@@ -1,31 +1,34 @@
-pub mod traits;
 pub mod capture;
-pub mod ui_tree;
-pub mod ocr;
+pub mod config;
+pub mod engine;
+pub mod error;
+pub mod events;
 pub mod grounding;
+pub mod input;
 #[cfg(target_os = "android")]
 pub mod jni_bridge;
-pub mod error;
-pub mod types;
-pub mod config;
-pub mod events;
+pub mod ocr;
 pub mod permission;
-pub mod engine;
-pub mod input;
+pub mod traits;
+pub mod types;
+pub mod ui_tree;
 
 pub use types::*;
 
 pub use capture::{ScreenCapture, ScreenCaptureFactory};
-pub use error::{ScreenError, ScreenResult};
 pub use config::ScreenConfig;
+pub use engine::{ScreenAnalysis, ScreenEngine};
+pub use error::{ScreenError, ScreenResult};
 pub use events::{ScreenEvent, ScreenEventPayload};
+pub use input::{InputActionExt, ScreenInputAction, ScreenInputBridge, ScreenInputTarget};
 pub use permission::{ScreenCapability, ScreenPermissionManager};
-pub use engine::{ScreenEngine, ScreenAnalysis};
-pub use traits::{UITreeExtractor, OCREngine, VisualGrounding};
-pub use input::{ScreenInputBridge, ScreenInputTarget, ScreenInputAction, InputActionExt};
+pub use traits::{OCREngine, UITreeExtractor, VisualGrounding};
 
 use async_trait::async_trait;
-use nova_kernel::{ErrorCategory, Kernel, KernelModule, ModuleHealth, NovaError, Result, EventMetadata, NovaEvent, log_activity};
+use nova_kernel::{
+    log_activity, ErrorCategory, EventMetadata, Kernel, KernelModule, ModuleHealth, NovaError,
+    NovaEvent, Result,
+};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -129,12 +132,17 @@ impl KernelModule for ScreenSystem {
             }
         };
         let mut engine = self.engine.write();
-        engine.capture.start_capture(capture_cfg).await
-            .map_err(|e| NovaError::new(
-                ErrorCategory::Internal,
-                "ERR_SCREEN_CAPTURE_START",
-                &e.to_string(),
-            ))?;
+        engine
+            .capture
+            .start_capture(capture_cfg)
+            .await
+            .map_err(|e| {
+                NovaError::new(
+                    ErrorCategory::Internal,
+                    "ERR_SCREEN_CAPTURE_START",
+                    &e.to_string(),
+                )
+            })?;
         drop(engine);
         tracing::info!("Screen module started");
         Ok(())
@@ -146,11 +154,13 @@ impl KernelModule for ScreenSystem {
         let mut engine = self.engine.write();
         let result = engine.capture.stop_capture().await;
         drop(engine);
-        result.map_err(|e| NovaError::new(
-            ErrorCategory::Internal,
-            "ERR_SCREEN_CAPTURE_STOP",
-            &e.to_string(),
-        ))
+        result.map_err(|e| {
+            NovaError::new(
+                ErrorCategory::Internal,
+                "ERR_SCREEN_CAPTURE_STOP",
+                &e.to_string(),
+            )
+        })
     }
 
     #[allow(clippy::await_holding_lock)]

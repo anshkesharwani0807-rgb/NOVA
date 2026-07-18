@@ -17,11 +17,11 @@ pub fn create() -> crate::ScreenResult<std::sync::Arc<dyn crate::OCREngine>> {
 mod windows_impl {
     use crate::{CapturedFrame, OCRRegion, OCRResult, Rect, ScreenError, ScreenResult};
     use async_trait::async_trait;
+    use windows::core::Interface;
     use windows::Foundation::Rect as WinRTRect;
     use windows::Graphics::Imaging::{BitmapBufferAccessMode, BitmapPixelFormat, SoftwareBitmap};
     use windows::Media::Ocr::OcrEngine;
     use windows::Win32::System::WinRT::IMemoryBufferByteAccess;
-    use windows::core::Interface;
 
     pub struct WindowsOCREngine {
         engine: OcrEngine,
@@ -29,9 +29,8 @@ mod windows_impl {
 
     impl WindowsOCREngine {
         pub fn new() -> ScreenResult<Self> {
-            let engine = OcrEngine::TryCreateFromUserProfileLanguages().map_err(|e| {
-                ScreenError::OCRFailed(format!("Windows OCR unavailable: {e}"))
-            })?;
+            let engine = OcrEngine::TryCreateFromUserProfileLanguages()
+                .map_err(|e| ScreenError::OCRFailed(format!("Windows OCR unavailable: {e}")))?;
             Ok(Self { engine })
         }
 
@@ -73,12 +72,9 @@ mod windows_impl {
             width: u32,
             height: u32,
         ) -> ScreenResult<SoftwareBitmap> {
-            let bitmap = SoftwareBitmap::Create(
-                BitmapPixelFormat::Bgra8,
-                width as i32,
-                height as i32,
-            )
-            .map_err(|e| ScreenError::OCRFailed(format!("SoftwareBitmap create: {e}")))?;
+            let bitmap =
+                SoftwareBitmap::Create(BitmapPixelFormat::Bgra8, width as i32, height as i32)
+                    .map_err(|e| ScreenError::OCRFailed(format!("SoftwareBitmap create: {e}")))?;
 
             let buffer = bitmap
                 .LockBuffer(BitmapBufferAccessMode::ReadWrite)
@@ -126,10 +122,7 @@ mod windows_impl {
                 .get()
                 .map_err(|e| ScreenError::OCRFailed(format!("Recognize failed: {e}")))?;
 
-            let text = ocr_result
-                .Text()
-                .map(|s| s.to_string())
-                .unwrap_or_default();
+            let text = ocr_result.Text().map(|s| s.to_string()).unwrap_or_default();
 
             let language = "en".to_string();
 
@@ -146,10 +139,7 @@ mod windows_impl {
                 for line in lines {
                     if let Ok(words) = line.Words() {
                         for word in words {
-                            let word_text = word
-                                .Text()
-                                .map(|s| s.to_string())
-                                .unwrap_or_default();
+                            let word_text = word.Text().map(|s| s.to_string()).unwrap_or_default();
 
                             if let Ok(winrt_rect) = word.BoundingRect() {
                                 regions.push(OCRRegion {
@@ -238,9 +228,7 @@ fn obj_to_string(env: &JNIEnv, obj: &JObject) -> String {
         return String::new();
     }
     let js = unsafe { jni::objects::JString::from_raw(obj.as_raw()) };
-    env.get_string(&js)
-        .map(|s| s.into())
-        .unwrap_or_default()
+    env.get_string(&js).map(|s| s.into()).unwrap_or_default()
 }
 
 /// Get or lazily initialise the ML Kit TextRecognizer singleton.
@@ -283,9 +271,7 @@ impl AndroidOCREngine {
     pub fn new() -> crate::ScreenResult<Self> {
         let java_vm = unsafe {
             let vm_ptr = jni::sys::JNI_GetCreatedJavaVMs().map_err(|_| {
-                crate::ScreenError::PlatformError(
-                    "No Java VM — Android runtime not started".into(),
-                )
+                crate::ScreenError::PlatformError("No Java VM — Android runtime not started".into())
             })?;
             jni::JavaVM::from_raw(vm_ptr.0 as *mut jni::sys::JavaVM).map_err(|_| {
                 crate::ScreenError::PlatformError("Failed to wrap JavaVM handle".into())
@@ -303,9 +289,7 @@ impl AndroidOCREngine {
             Err(_) => self
                 .java_vm
                 .attach_current_thread_as_daemon()
-                .map_err(|_| {
-                    crate::ScreenError::PlatformError("JNI thread attach failed".into())
-                }),
+                .map_err(|_| crate::ScreenError::PlatformError("JNI thread attach failed".into())),
         }
     }
 
@@ -378,9 +362,7 @@ impl AndroidOCREngine {
                 rgba.len() as jni::sys::jlong,
             )
         }
-        .map_err(|e| {
-            crate::ScreenError::OCRFailed(format!("newDirectByteBuffer: {e}"))
-        })?;
+        .map_err(|e| crate::ScreenError::OCRFailed(format!("newDirectByteBuffer: {e}")))?;
 
         env.call_method(
             &bitmap,
@@ -415,18 +397,17 @@ impl AndroidOCREngine {
             .l()?;
 
         // --- 5. Block on result via Tasks.await() ---------------------------
-        let text_result = env
-            .call_static_method(
-                "com/google/android/gms/tasks/Tasks",
-                "await",
-                "(Lcom/google/android/gms/tasks/Task;)Ljava/lang/Object;",
-                &[JValue::Object(&task)],
-            );
+        let text_result = env.call_static_method(
+            "com/google/android/gms/tasks/Tasks",
+            "await",
+            "(Lcom/google/android/gms/tasks/Task;)Ljava/lang/Object;",
+            &[JValue::Object(&task)],
+        );
 
         let text_obj = match text_result {
-            Ok(val) => val.l().map_err(|_| {
-                crate::ScreenError::OCRFailed("Tasks.await returned null".into())
-            })?,
+            Ok(val) => val
+                .l()
+                .map_err(|_| crate::ScreenError::OCRFailed("Tasks.await returned null".into()))?,
             Err(e) => {
                 env.exception_clear().ok();
                 return Err(crate::ScreenError::OCRFailed(format!(
@@ -467,7 +448,12 @@ impl AndroidOCREngine {
 
             for block_idx in 0..size {
                 let block = env
-                    .call_method(&list, "get", "(I)Ljava/lang/Object;", &[JValue::Int(block_idx)])
+                    .call_method(
+                        &list,
+                        "get",
+                        "(I)Ljava/lang/Object;",
+                        &[JValue::Int(block_idx)],
+                    )
                     .ok()
                     .and_then(|v| v.l().ok())
                     .unwrap_or_else(JObject::null);
@@ -544,7 +530,12 @@ impl AndroidOCREngine {
                         );
 
                         let bounds_obj = env
-                            .call_method(&element, "getBoundingBox", "()Landroid/graphics/Rect;", &[])
+                            .call_method(
+                                &element,
+                                "getBoundingBox",
+                                "()Landroid/graphics/Rect;",
+                                &[],
+                            )
                             .ok()
                             .and_then(|v| v.l().ok())
                             .unwrap_or_else(JObject::null);

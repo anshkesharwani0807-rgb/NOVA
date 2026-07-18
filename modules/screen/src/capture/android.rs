@@ -77,9 +77,8 @@ impl AndroidScreenCapture {
             let vm_ptr = jni::sys::JNI_GetCreatedJavaVMs().map_err(|_| {
                 ScreenError::PlatformError("No Java VM — Android runtime not started".into())
             })?;
-            jni::JavaVM::from_raw(vm_ptr.0 as *mut jni::sys::JavaVM).map_err(|_| {
-                ScreenError::PlatformError("Failed to wrap JavaVM handle".into())
-            })?
+            jni::JavaVM::from_raw(vm_ptr.0 as *mut jni::sys::JavaVM)
+                .map_err(|_| ScreenError::PlatformError("Failed to wrap JavaVM handle".into()))?
         };
 
         Ok(Self {
@@ -152,19 +151,25 @@ impl AndroidScreenCapture {
     // ImageReader + VirtualDisplay creation
     // ------------------------------------------------------------------
 
-    fn create_image_reader(&self, env: &JNIEnv, width: u32, height: u32) -> ScreenResult<GlobalRef> {
-        let reader = env.call_static_method(
-            "android/media/ImageReader",
-            "newInstance",
-            "(III)Landroid/media/ImageReader;",
-            &[
-                JValue::Int(width as jint),
-                JValue::Int(height as jint),
-                JValue::Int(3), // PixelFormat.RGBA_8888
-                JValue::Int(2), // maxImages
-            ],
-        )?
-        .l()?;
+    fn create_image_reader(
+        &self,
+        env: &JNIEnv,
+        width: u32,
+        height: u32,
+    ) -> ScreenResult<GlobalRef> {
+        let reader = env
+            .call_static_method(
+                "android/media/ImageReader",
+                "newInstance",
+                "(III)Landroid/media/ImageReader;",
+                &[
+                    JValue::Int(width as jint),
+                    JValue::Int(height as jint),
+                    JValue::Int(3), // PixelFormat.RGBA_8888
+                    JValue::Int(2), // maxImages
+                ],
+            )?
+            .l()?;
 
         env.new_global_ref(&reader)
             .map_err(|_| ScreenError::PlatformError("GlobalRef for ImageReader failed".into()))
@@ -175,13 +180,8 @@ impl AndroidScreenCapture {
         env: &JNIEnv<'local>,
         ir: &JObject<'local>,
     ) -> ScreenResult<JObject<'local>> {
-        env.call_method(
-            ir,
-            "getSurface",
-            "()Landroid/view/Surface;",
-            &[],
-        )?
-        .l()
+        env.call_method(ir, "getSurface", "()Landroid/view/Surface;", &[])?
+            .l()
     }
 
     fn create_virtual_display<'local>(
@@ -222,9 +222,7 @@ impl AndroidScreenCapture {
 
     fn acquire_latest_frame(&self, env: &JNIEnv) -> ScreenResult<CapturedFrame> {
         let ir_guard = self.image_reader.lock();
-        let ir = ir_guard
-            .as_ref()
-            .ok_or(ScreenError::NotInitialized)?;
+        let ir = ir_guard.as_ref().ok_or(ScreenError::NotInitialized)?;
         let ir_local = local_ref(env, ir)?;
 
         let image = env
@@ -274,7 +272,12 @@ impl AndroidScreenCapture {
     // Post-processing: region crop + downscale
     // ------------------------------------------------------------------
 
-    fn build_frame(&self, width: u32, height: u32, mut pixel_data: Vec<u8>) -> ScreenResult<CapturedFrame> {
+    fn build_frame(
+        &self,
+        width: u32,
+        height: u32,
+        mut pixel_data: Vec<u8>,
+    ) -> ScreenResult<CapturedFrame> {
         let dm = self.display_metrics.lock();
         let cfg = self.config.lock();
 
@@ -342,7 +345,12 @@ impl AndroidScreenCapture {
 // Pixel-format conversion functions (free functions)
 // ===========================================================================
 
-fn rgba8888_to_bgra8(env: &JNIEnv, image: &JObject, width: u32, height: u32) -> ScreenResult<Vec<u8>> {
+fn rgba8888_to_bgra8(
+    env: &JNIEnv,
+    image: &JObject,
+    width: u32,
+    height: u32,
+) -> ScreenResult<Vec<u8>> {
     let planes_arr = env
         .call_method(image, "getPlanes", "()[Landroid/media/Image$Plane;", &[])?
         .l()?;
@@ -352,9 +360,7 @@ fn rgba8888_to_bgra8(env: &JNIEnv, image: &JObject, width: u32, height: u32) -> 
     let buf = env
         .call_method(&plane0, "getBuffer", "()Ljava/nio/ByteBuffer;", &[])?
         .l()?;
-    let row_stride = env
-        .call_method(&plane0, "getRowStride", "()I", &[])?
-        .i()? as usize;
+    let row_stride = env.call_method(&plane0, "getRowStride", "()I", &[])?.i()? as usize;
 
     let row_bytes = width as usize * 4;
     let src_size = height as usize * row_stride;
@@ -368,9 +374,9 @@ fn rgba8888_to_bgra8(env: &JNIEnv, image: &JObject, width: u32, height: u32) -> 
         for x in 0..width as usize {
             let si = src_off + x * 4;
             let di = dst_off + x * 4;
-            dst[di] = src[si + 2];     // B
+            dst[di] = src[si + 2]; // B
             dst[di + 1] = src[si + 1]; // G
-            dst[di + 2] = src[si];     // R
+            dst[di + 2] = src[si]; // R
             dst[di + 3] = src[si + 3]; // A
         }
     }
@@ -378,7 +384,12 @@ fn rgba8888_to_bgra8(env: &JNIEnv, image: &JObject, width: u32, height: u32) -> 
     Ok(dst)
 }
 
-fn yuv420_to_bgra8(env: &JNIEnv, image: &JObject, width: u32, height: u32) -> ScreenResult<Vec<u8>> {
+fn yuv420_to_bgra8(
+    env: &JNIEnv,
+    image: &JObject,
+    width: u32,
+    height: u32,
+) -> ScreenResult<Vec<u8>> {
     let planes_arr = env
         .call_method(image, "getPlanes", "()[Landroid/media/Image$Plane;", &[])?
         .l()?;
@@ -389,12 +400,8 @@ fn yuv420_to_bgra8(env: &JNIEnv, image: &JObject, width: u32, height: u32) -> Sc
         let buf = env
             .call_method(&p, "getBuffer", "()Ljava/nio/ByteBuffer;", &[])?
             .l()?;
-        let rs = env
-            .call_method(&p, "getRowStride", "()I", &[])?
-            .i()? as usize;
-        let ps = env
-            .call_method(&p, "getPixelStride", "()I", &[])?
-            .i()? as usize;
+        let rs = env.call_method(&p, "getRowStride", "()I", &[])?.i()? as usize;
+        let ps = env.call_method(&p, "getPixelStride", "()I", &[])?.i()? as usize;
         let cap = unsafe { env.get_direct_buffer_capacity(&buf)? } as usize;
         let ptr = unsafe { env.get_direct_buffer_address(&buf)? as *const u8 };
         let data = if !ptr.is_null() && cap > 0 {
@@ -472,7 +479,14 @@ impl super::ScreenCapture for AndroidScreenCapture {
         let ir = self.create_image_reader(&env, vd_w, vd_h)?;
         let ir_local = local_ref(&env, &ir)?;
         let surface = self.get_surface_from_reader(&env, &ir_local)?;
-        let vd = self.create_virtual_display(&env, &mp_local, &surface, vd_w, vd_h, metrics.density_dpi)?;
+        let vd = self.create_virtual_display(
+            &env,
+            &mp_local,
+            &surface,
+            vd_w,
+            vd_h,
+            metrics.density_dpi,
+        )?;
 
         *self.image_reader.lock() = Some(ir);
         *self.virtual_display.lock() = Some(vd);

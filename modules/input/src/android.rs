@@ -37,20 +37,17 @@ pub fn has_accessibility_service() -> bool {
 static JAVA_VM: OnceLock<Arc<jni::JavaVM>> = OnceLock::new();
 
 fn get_java_vm() -> InputResult<&'static Arc<jni::JavaVM>> {
-    JAVA_VM.get_or_try_init(|| {
-        unsafe {
+    JAVA_VM
+        .get_or_try_init(|| unsafe {
             let vm_ptr = jni::sys::JNI_GetCreatedJavaVMs().map_err(|_| {
-                InputError::ProviderError(
-                    "No Java VM — Android runtime not started".to_string(),
-                )
+                InputError::ProviderError("No Java VM — Android runtime not started".to_string())
             })?;
             let vm = jni::JavaVM::from_raw(vm_ptr.0 as *mut jni::sys::JavaVM).map_err(|_| {
                 InputError::ProviderError("Failed to wrap JavaVM handle".to_string())
             })?;
             Ok::<Arc<jni::JavaVM>, InputError>(Arc::new(vm))
-        }
-    })
-    .map_err(|e| e.clone())
+        })
+        .map_err(|e| e.clone())
 }
 
 fn get_env() -> InputResult<JNIEnv> {
@@ -85,10 +82,20 @@ impl AndroidInputProvider {
         let path = env
             .new_object("android/graphics/Path", "()V", &[])
             .map_err(|e| InputError::ProviderError(format!("create Path: {e}")))?;
-        env.call_method(&path, "moveTo", "(FF)V", &[JValue::Float(x), JValue::Float(y)])
-            .map_err(|e| InputError::ProviderError(format!("Path.moveTo: {e}")))?;
-        env.call_method(&path, "lineTo", "(FF)V", &[JValue::Float(x), JValue::Float(y)])
-            .map_err(|e| InputError::ProviderError(format!("Path.lineTo: {e}")))?;
+        env.call_method(
+            &path,
+            "moveTo",
+            "(FF)V",
+            &[JValue::Float(x), JValue::Float(y)],
+        )
+        .map_err(|e| InputError::ProviderError(format!("Path.moveTo: {e}")))?;
+        env.call_method(
+            &path,
+            "lineTo",
+            "(FF)V",
+            &[JValue::Float(x), JValue::Float(y)],
+        )
+        .map_err(|e| InputError::ProviderError(format!("Path.lineTo: {e}")))?;
         Self::build_gesture(env, &path, 0, duration_ms)
     }
 
@@ -103,10 +110,20 @@ impl AndroidInputProvider {
         let path = env
             .new_object("android/graphics/Path", "()V", &[])
             .map_err(|e| InputError::ProviderError(format!("create Path: {e}")))?;
-        env.call_method(&path, "moveTo", "(FF)V", &[JValue::Float(x1), JValue::Float(y1)])
-            .map_err(|e| InputError::ProviderError(format!("Path.moveTo: {e}")))?;
-        env.call_method(&path, "lineTo", "(FF)V", &[JValue::Float(x2), JValue::Float(y2)])
-            .map_err(|e| InputError::ProviderError(format!("Path.lineTo: {e}")))?;
+        env.call_method(
+            &path,
+            "moveTo",
+            "(FF)V",
+            &[JValue::Float(x1), JValue::Float(y1)],
+        )
+        .map_err(|e| InputError::ProviderError(format!("Path.moveTo: {e}")))?;
+        env.call_method(
+            &path,
+            "lineTo",
+            "(FF)V",
+            &[JValue::Float(x2), JValue::Float(y2)],
+        )
+        .map_err(|e| InputError::ProviderError(format!("Path.lineTo: {e}")))?;
         Self::build_gesture(env, &path, 0, duration_ms)
     }
 
@@ -116,14 +133,24 @@ impl AndroidInputProvider {
         start_time: i64,
         duration_ms: i64,
     ) -> InputResult<JObject> {
-        let stroke = env.new_object(
-            "android/view/accessibility/GestureDescription$StrokeDescription",
-            "(Landroid/graphics/Path;JJ)V",
-            &[JValue::Object(path), JValue::Long(start_time), JValue::Long(duration_ms)],
-        ).map_err(|e| InputError::ProviderError(format!("create StrokeDescription: {e}")))?;
+        let stroke = env
+            .new_object(
+                "android/view/accessibility/GestureDescription$StrokeDescription",
+                "(Landroid/graphics/Path;JJ)V",
+                &[
+                    JValue::Object(path),
+                    JValue::Long(start_time),
+                    JValue::Long(duration_ms),
+                ],
+            )
+            .map_err(|e| InputError::ProviderError(format!("create StrokeDescription: {e}")))?;
 
         let builder = env
-            .new_object("android/view/accessibility/GestureDescription$Builder", "()V", &[])
+            .new_object(
+                "android/view/accessibility/GestureDescription$Builder",
+                "()V",
+                &[],
+            )
             .map_err(|e| InputError::ProviderError(format!("create Builder: {e}")))?;
 
         env.call_method(
@@ -133,10 +160,18 @@ impl AndroidInputProvider {
             &[JValue::Object(&stroke)],
         ).map_err(|e| InputError::ProviderError(format!("addStroke: {e}")))?;
 
-        let gesture = env.call_method(&builder, "build", "()Landroid/view/accessibility/GestureDescription;", &[])
+        let gesture = env
+            .call_method(
+                &builder,
+                "build",
+                "()Landroid/view/accessibility/GestureDescription;",
+                &[],
+            )
             .map_err(|e| InputError::ProviderError(format!("build gesture: {e}")))?;
 
-        gesture.l().map_err(|e| InputError::ProviderError(format!("gesture.l(): {e}")))
+        gesture
+            .l()
+            .map_err(|e| InputError::ProviderError(format!("gesture.l(): {e}")))
     }
 
     fn dispatch_gesture(env: &JNIEnv, svc: &JObject, gesture: &JObject) -> InputResult<()> {
@@ -151,7 +186,12 @@ impl AndroidInputProvider {
 
     fn perform_global_action(env: &JNIEnv, svc: &JObject, action_id: i32) -> InputResult<bool> {
         let result = env
-            .call_method(svc, "performGlobalAction", "(I)Z", &[JValue::Int(action_id)])
+            .call_method(
+                svc,
+                "performGlobalAction",
+                "(I)Z",
+                &[JValue::Int(action_id)],
+            )
             .map_err(|e| InputError::ProviderError(format!("performGlobalAction: {e}")))?;
         Ok(result.z().unwrap_or(false))
     }
@@ -163,7 +203,8 @@ impl AndroidInputProvider {
                 "getRootInActiveWindow",
                 "()Landroid/view/accessibility/AccessibilityNodeInfo;",
                 &[],
-            ).map_err(|e| InputError::ProviderError(format!("getRootInActiveWindow: {e}")))?
+            )
+            .map_err(|e| InputError::ProviderError(format!("getRootInActiveWindow: {e}")))?
             .l()
             .map_err(|e| InputError::ProviderError(format!("root.l(): {e}")))?;
 
@@ -175,13 +216,23 @@ impl AndroidInputProvider {
 
         // Find focused node: try FOCUS_INPUT (1), fallback to FOCUS_ACCESSIBILITY (0)
         let mut focused = env
-            .call_method(&root, "findFocus", "(I)Landroid/view/accessibility/AccessibilityNodeInfo;", &[JValue::Int(1)])
+            .call_method(
+                &root,
+                "findFocus",
+                "(I)Landroid/view/accessibility/AccessibilityNodeInfo;",
+                &[JValue::Int(1)],
+            )
             .and_then(|v| v.l())
             .unwrap_or(JObject::null());
 
         if focused.is_null() {
             focused = env
-                .call_method(&root, "findFocus", "(I)Landroid/view/accessibility/AccessibilityNodeInfo;", &[JValue::Int(0)])
+                .call_method(
+                    &root,
+                    "findFocus",
+                    "(I)Landroid/view/accessibility/AccessibilityNodeInfo;",
+                    &[JValue::Int(0)],
+                )
                 .and_then(|v| v.l())
                 .unwrap_or(JObject::null());
         }
@@ -196,8 +247,13 @@ impl AndroidInputProvider {
         }
 
         // Ensure focus
-        env.call_method(&focused, "performAction", "(I)Z", &[JValue::Int(0x00000001)]) // ACTION_FOCUS = 1
-            .ok();
+        env.call_method(
+            &focused,
+            "performAction",
+            "(I)Z",
+            &[JValue::Int(0x00000001)],
+        ) // ACTION_FOCUS = 1
+        .ok();
 
         // Build arguments Bundle
         let args = env
@@ -216,7 +272,8 @@ impl AndroidInputProvider {
             "putCharSequence",
             "(Ljava/lang/String;Ljava/lang/CharSequence;)V",
             &[JValue::Object(&jkey.into()), JValue::Object(&jtext.into())],
-        ).map_err(|e| InputError::ProviderError(format!("Bundle.putCharSequence: {e}")))?;
+        )
+        .map_err(|e| InputError::ProviderError(format!("Bundle.putCharSequence: {e}")))?;
 
         // ACTION_SET_TEXT = 0x200000
         let performed = env
@@ -225,7 +282,8 @@ impl AndroidInputProvider {
                 "performAction",
                 "(ILandroid/os/Bundle;)Z",
                 &[JValue::Int(0x200000), JValue::Object(&args)],
-            ).map_err(|e| InputError::ProviderError(format!("performAction SET_TEXT: {e}")))?;
+            )
+            .map_err(|e| InputError::ProviderError(format!("performAction SET_TEXT: {e}")))?;
 
         // Recycle focused node
         env.call_method(&focused, "recycle", "()V", &[]).ok();
@@ -260,8 +318,7 @@ impl InputEngine for AndroidInputProvider {
         match action {
             // ── Touch actions ────────────────────────────────────────────
             InputAction::Touch(TouchAction::Tap { point }) => {
-                let gesture =
-                    Self::build_tap_gesture(&env, point.x as f32, point.y as f32, 100)?;
+                let gesture = Self::build_tap_gesture(&env, point.x as f32, point.y as f32, 100)?;
                 Self::dispatch_gesture(&env, &svc, &gesture)?;
                 Ok(ActionResult::success(format!(
                     "tap at ({}, {})",
@@ -291,7 +348,11 @@ impl InputEngine for AndroidInputProvider {
                 )))
             }
 
-            InputAction::Touch(TouchAction::Swipe { from, to, duration_ms }) => {
+            InputAction::Touch(TouchAction::Swipe {
+                from,
+                to,
+                duration_ms,
+            }) => {
                 let dur = (*duration_ms).max(50).min(2000);
                 let gesture = Self::build_swipe_gesture(
                     &env,
@@ -308,7 +369,11 @@ impl InputEngine for AndroidInputProvider {
                 )))
             }
 
-            InputAction::Touch(TouchAction::Pinch { center, scale, duration_ms }) => {
+            InputAction::Touch(TouchAction::Pinch {
+                center,
+                scale,
+                duration_ms,
+            }) => {
                 let dur = (*duration_ms).max(100).min(2000);
                 let offset = 200.0f32;
 
@@ -324,8 +389,13 @@ impl InputEngine for AndroidInputProvider {
 
                 if *scale > 1.0 {
                     // Pinch OUT: fingers start at center, move apart
-                    env.call_method(&path1, "moveTo", "(FF)V", &[JValue::Float(cx), JValue::Float(cy)])
-                        .ok();
+                    env.call_method(
+                        &path1,
+                        "moveTo",
+                        "(FF)V",
+                        &[JValue::Float(cx), JValue::Float(cy)],
+                    )
+                    .ok();
                     env.call_method(
                         &path1,
                         "lineTo",
@@ -333,8 +403,13 @@ impl InputEngine for AndroidInputProvider {
                         &[JValue::Float(cx + offset), JValue::Float(cy)],
                     )
                     .ok();
-                    env.call_method(&path2, "moveTo", "(FF)V", &[JValue::Float(cx), JValue::Float(cy)])
-                        .ok();
+                    env.call_method(
+                        &path2,
+                        "moveTo",
+                        "(FF)V",
+                        &[JValue::Float(cx), JValue::Float(cy)],
+                    )
+                    .ok();
                     env.call_method(
                         &path2,
                         "lineTo",
@@ -351,8 +426,13 @@ impl InputEngine for AndroidInputProvider {
                         &[JValue::Float(cx + offset), JValue::Float(cy)],
                     )
                     .ok();
-                    env.call_method(&path1, "lineTo", "(FF)V", &[JValue::Float(cx), JValue::Float(cy)])
-                        .ok();
+                    env.call_method(
+                        &path1,
+                        "lineTo",
+                        "(FF)V",
+                        &[JValue::Float(cx), JValue::Float(cy)],
+                    )
+                    .ok();
                     env.call_method(
                         &path2,
                         "moveTo",
@@ -360,27 +440,48 @@ impl InputEngine for AndroidInputProvider {
                         &[JValue::Float(cx - offset), JValue::Float(cy)],
                     )
                     .ok();
-                    env.call_method(&path2, "lineTo", "(FF)V", &[JValue::Float(cx), JValue::Float(cy)])
-                        .ok();
+                    env.call_method(
+                        &path2,
+                        "lineTo",
+                        "(FF)V",
+                        &[JValue::Float(cx), JValue::Float(cy)],
+                    )
+                    .ok();
                 }
 
                 let stroke1 = env
                     .new_object(
                         "android/view/accessibility/GestureDescription$StrokeDescription",
                         "(Landroid/graphics/Path;JJ)V",
-                        &[JValue::Object(&path1), JValue::Long(0), JValue::Long(dur as i64)],
+                        &[
+                            JValue::Object(&path1),
+                            JValue::Long(0),
+                            JValue::Long(dur as i64),
+                        ],
                     )
-                    .map_err(|e| InputError::ProviderError(format!("create StrokeDescription: {e}")))?;
+                    .map_err(|e| {
+                        InputError::ProviderError(format!("create StrokeDescription: {e}"))
+                    })?;
                 let stroke2 = env
                     .new_object(
                         "android/view/accessibility/GestureDescription$StrokeDescription",
                         "(Landroid/graphics/Path;JJ)V",
-                        &[JValue::Object(&path2), JValue::Long(0), JValue::Long(dur as i64)],
+                        &[
+                            JValue::Object(&path2),
+                            JValue::Long(0),
+                            JValue::Long(dur as i64),
+                        ],
                     )
-                    .map_err(|e| InputError::ProviderError(format!("create StrokeDescription: {e}")))?;
+                    .map_err(|e| {
+                        InputError::ProviderError(format!("create StrokeDescription: {e}"))
+                    })?;
 
                 let builder = env
-                    .new_object("android/view/accessibility/GestureDescription$Builder", "()V", &[])
+                    .new_object(
+                        "android/view/accessibility/GestureDescription$Builder",
+                        "()V",
+                        &[],
+                    )
                     .map_err(|e| InputError::ProviderError(format!("create Builder: {e}")))?;
 
                 env.call_method(
@@ -397,7 +498,12 @@ impl InputEngine for AndroidInputProvider {
                 ).ok();
 
                 let gesture = env
-                    .call_method(&builder, "build", "()Landroid/view/accessibility/GestureDescription;", &[])
+                    .call_method(
+                        &builder,
+                        "build",
+                        "()Landroid/view/accessibility/GestureDescription;",
+                        &[],
+                    )
                     .map_err(|e| InputError::ProviderError(format!("build gesture: {e}")))?
                     .l()
                     .map_err(|e| InputError::ProviderError(format!("gesture.l(): {e}")))?;
@@ -412,7 +518,11 @@ impl InputEngine for AndroidInputProvider {
             }
 
             // ── Mouse → Touch mappings ──────────────────────────────────
-            InputAction::Mouse(MouseAction::Click { point, button, count }) => {
+            InputAction::Mouse(MouseAction::Click {
+                point,
+                button,
+                count,
+            }) => {
                 let x = point.x as f32;
                 let y = point.y as f32;
                 match button {
@@ -454,7 +564,11 @@ impl InputEngine for AndroidInputProvider {
                 "mouse move not supported on Android".to_string(),
             )),
 
-            InputAction::Mouse(MouseAction::Drag { from, to, button: _ }) => {
+            InputAction::Mouse(MouseAction::Drag {
+                from,
+                to,
+                button: _,
+            }) => {
                 let gesture = Self::build_swipe_gesture(
                     &env,
                     from.x as f32,
@@ -580,17 +694,25 @@ impl InputEngine for AndroidInputProvider {
                         "(Landroid/graphics/Path;JJ)V",
                         &[JValue::Object(&path1), JValue::Long(0), JValue::Long(dur)],
                     )
-                    .map_err(|e| InputError::ProviderError(format!("create StrokeDescription: {e}")))?;
+                    .map_err(|e| {
+                        InputError::ProviderError(format!("create StrokeDescription: {e}"))
+                    })?;
                 let stroke2 = env
                     .new_object(
                         "android/view/accessibility/GestureDescription$StrokeDescription",
                         "(Landroid/graphics/Path;JJ)V",
                         &[JValue::Object(&path2), JValue::Long(0), JValue::Long(dur)],
                     )
-                    .map_err(|e| InputError::ProviderError(format!("create StrokeDescription: {e}")))?;
+                    .map_err(|e| {
+                        InputError::ProviderError(format!("create StrokeDescription: {e}"))
+                    })?;
 
                 let builder = env
-                    .new_object("android/view/accessibility/GestureDescription$Builder", "()V", &[])
+                    .new_object(
+                        "android/view/accessibility/GestureDescription$Builder",
+                        "()V",
+                        &[],
+                    )
                     .map_err(|e| InputError::ProviderError(format!("create Builder: {e}")))?;
 
                 env.call_method(
@@ -607,7 +729,12 @@ impl InputEngine for AndroidInputProvider {
                 ).ok();
 
                 let gesture = env
-                    .call_method(&builder, "build", "()Landroid/view/accessibility/GestureDescription;", &[])
+                    .call_method(
+                        &builder,
+                        "build",
+                        "()Landroid/view/accessibility/GestureDescription;",
+                        &[],
+                    )
                     .map_err(|e| InputError::ProviderError(format!("build gesture: {e}")))?
                     .l()
                     .map_err(|e| InputError::ProviderError(format!("gesture.l(): {e}")))?;
@@ -615,7 +742,9 @@ impl InputEngine for AndroidInputProvider {
                 Self::dispatch_gesture(&env, &svc, &gesture)?;
 
                 let action_name = if *factor > 1.0 { "in" } else { "out" };
-                Ok(ActionResult::success(format!("zoom {action_name} factor={factor}")))
+                Ok(ActionResult::success(format!(
+                    "zoom {action_name} factor={factor}"
+                )))
             }
 
             InputAction::Gesture(GestureAction::ThreeFingerSwipe { direction }) => {
@@ -647,9 +776,7 @@ impl InputEngine for AndroidInputProvider {
                         if ok {
                             Ok(ActionResult::success("back".to_string()))
                         } else {
-                            Err(InputError::ProviderError(
-                                "back action failed".to_string(),
-                            ))
+                            Err(InputError::ProviderError("back action failed".to_string()))
                         }
                     }
                     "home" => {
@@ -657,9 +784,7 @@ impl InputEngine for AndroidInputProvider {
                         if ok {
                             Ok(ActionResult::success("home".to_string()))
                         } else {
-                            Err(InputError::ProviderError(
-                                "home action failed".to_string(),
-                            ))
+                            Err(InputError::ProviderError("home action failed".to_string()))
                         }
                     }
                     "recents" | "overview" => {

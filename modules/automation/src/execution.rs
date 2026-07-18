@@ -4,15 +4,19 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::action::{ActionExecutor, ActionType, DefaultActionExecutor, InputInjectionParams, ActionResult};
-use crate::screen_executor::ScreenAwareExecutor;
-use crate::real_executors::{ScreenClickExecutor, ScreenTypeExecutor, ScreenDragExecutor, ScreenSwipeExecutor};
-use crate::consent_gate::{ConsentDecision, ConsentGate};
+use crate::action::{
+    ActionExecutor, ActionResult, ActionType, DefaultActionExecutor, InputInjectionParams,
+};
 use crate::condition::{ConditionEvaluator, DefaultConditionEvaluator};
 use crate::config::AutomationConfig;
+use crate::consent_gate::{ConsentDecision, ConsentGate};
 use crate::error::AutomationError;
 use crate::events::AutomationEventPayload;
 use crate::history::{ExecutionRecord, ExecutionStatus, HistoryStore};
+use crate::real_executors::{
+    ScreenClickExecutor, ScreenDragExecutor, ScreenSwipeExecutor, ScreenTypeExecutor,
+};
+use crate::screen_executor::ScreenAwareExecutor;
 use crate::workflow::{Workflow, WorkflowStep};
 
 /// Wraps DefaultActionExecutor with InputEngine support for input injection.
@@ -81,15 +85,17 @@ impl InputAwareExecutor {
             "type" => nova_input::InputAction::Keyboard(nova_input::KeyboardAction::TypeText {
                 text: params.params.get("text").cloned().unwrap_or_default(),
             }),
-            "key_press" => nova_input::InputAction::Keyboard(nova_input::KeyboardAction::KeyPress {
-                key: params.params.get("key").cloned().unwrap_or_default(),
-                modifiers: parse_modifiers(&params.params.get("modifiers").map(String::as_str)),
-            }),
-            "key_release" => nova_input::InputAction::Keyboard(
-                nova_input::KeyboardAction::KeyRelease {
+            "key_press" => {
+                nova_input::InputAction::Keyboard(nova_input::KeyboardAction::KeyPress {
                     key: params.params.get("key").cloned().unwrap_or_default(),
-                },
-            ),
+                    modifiers: parse_modifiers(&params.params.get("modifiers").map(String::as_str)),
+                })
+            }
+            "key_release" => {
+                nova_input::InputAction::Keyboard(nova_input::KeyboardAction::KeyRelease {
+                    key: params.params.get("key").cloned().unwrap_or_default(),
+                })
+            }
             "hotkey" => {
                 let keys_str = params.params.get("keys").cloned().unwrap_or_default();
                 let keys: Vec<String> = keys_str.split(',').map(|s| s.trim().to_string()).collect();
@@ -222,8 +228,7 @@ struct ExecutionState {
 impl ExecutionEngine {
     pub fn new(config: AutomationConfig, history: Arc<dyn HistoryStore>) -> Self {
         let mut executors: HashMap<String, Box<dyn ActionExecutor>> = HashMap::new();
-        let default_exec: Box<dyn ActionExecutor> =
-            Box::new(DefaultActionExecutor);
+        let default_exec: Box<dyn ActionExecutor> = Box::new(DefaultActionExecutor);
         executors.insert("default".to_string(), default_exec);
         Self {
             autonomy_level: RwLock::new("conservative".to_string()),
@@ -247,27 +252,40 @@ impl ExecutionEngine {
     pub fn with_input_engine(mut self, input_engine: Arc<dyn nova_input::InputEngine>) -> Self {
         let executor: Box<dyn ActionExecutor> =
             Box::new(InputAwareExecutor::new(Some(input_engine)));
-        self.action_executors.get_mut().insert("default".to_string(), executor);
+        self.action_executors
+            .get_mut()
+            .insert("default".to_string(), executor);
         self
     }
 
     pub fn set_input_engine(&self, engine: Arc<dyn nova_input::InputEngine>) {
-        let executor: Box<dyn ActionExecutor> =
-            Box::new(InputAwareExecutor::new(Some(engine)));
-        self.action_executors.write().insert("default".to_string(), executor);
+        let executor: Box<dyn ActionExecutor> = Box::new(InputAwareExecutor::new(Some(engine)));
+        self.action_executors
+            .write()
+            .insert("default".to_string(), executor);
     }
 
-    pub fn with_screen_engine(mut self, screen_engine: Arc<parking_lot::RwLock<nova_screen::ScreenEngine>>) -> Self {
+    pub fn with_screen_engine(
+        mut self,
+        screen_engine: Arc<parking_lot::RwLock<nova_screen::ScreenEngine>>,
+    ) -> Self {
         let executor: Box<dyn ActionExecutor> =
             Box::new(ScreenAwareExecutor::new(Some(screen_engine), None));
-        self.action_executors.get_mut().insert("default".to_string(), executor);
+        self.action_executors
+            .get_mut()
+            .insert("default".to_string(), executor);
         self
     }
 
-    pub fn set_screen_engine(&self, screen_engine: Arc<parking_lot::RwLock<nova_screen::ScreenEngine>>) {
+    pub fn set_screen_engine(
+        &self,
+        screen_engine: Arc<parking_lot::RwLock<nova_screen::ScreenEngine>>,
+    ) {
         let executor: Box<dyn ActionExecutor> =
             Box::new(ScreenAwareExecutor::new(Some(screen_engine), None));
-        self.action_executors.write().insert("default".to_string(), executor);
+        self.action_executors
+            .write()
+            .insert("default".to_string(), executor);
     }
 
     pub fn set_screen_and_input(
@@ -278,19 +296,31 @@ impl ExecutionEngine {
         let mut executors = self.action_executors.write();
         executors.insert(
             "default".to_string(),
-            Box::new(ScreenAwareExecutor::new(Some(screen_engine.clone()), Some(input_engine.clone()))),
+            Box::new(ScreenAwareExecutor::new(
+                Some(screen_engine.clone()),
+                Some(input_engine.clone()),
+            )),
         );
         executors.insert(
             "click".to_string(),
-            Box::new(ScreenClickExecutor::new(screen_engine.clone(), input_engine.clone())),
+            Box::new(ScreenClickExecutor::new(
+                screen_engine.clone(),
+                input_engine.clone(),
+            )),
         );
         executors.insert(
             "type".to_string(),
-            Box::new(ScreenTypeExecutor::new(screen_engine.clone(), input_engine.clone())),
+            Box::new(ScreenTypeExecutor::new(
+                screen_engine.clone(),
+                input_engine.clone(),
+            )),
         );
         executors.insert(
             "drag".to_string(),
-            Box::new(ScreenDragExecutor::new(screen_engine.clone(), input_engine.clone())),
+            Box::new(ScreenDragExecutor::new(
+                screen_engine.clone(),
+                input_engine.clone(),
+            )),
         );
         executors.insert(
             "swipe".to_string(),
@@ -539,7 +569,10 @@ impl ExecutionEngine {
                         data: None,
                     };
                 }
-                ConsentDecision::RequiresPrompt { stakes: _, description } => {
+                ConsentDecision::RequiresPrompt {
+                    stakes: _,
+                    description,
+                } => {
                     publish(AutomationEventPayload::AutomationError {
                         workflow_id: workflow_id.to_string(),
                         error: format!("step {idx} requires user consent: {description}"),
@@ -577,7 +610,8 @@ impl ExecutionEngine {
             let executors = self.action_executors.read();
 
             let executor_name = named_executor_for(action_kind);
-            let executor = executors.get(executor_name)
+            let executor = executors
+                .get(executor_name)
                 .or_else(|| executors.get("default"));
 
             let result = match executor {

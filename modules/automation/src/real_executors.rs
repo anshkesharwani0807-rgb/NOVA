@@ -1,20 +1,18 @@
 use parking_lot::RwLock;
 use std::sync::Arc;
 
-use nova_screen::{
-    GroundingQuery, ScreenEngine, ScreenInputBridge,
-};
 use nova_input::InputEngine;
+use nova_screen::{GroundingQuery, ScreenEngine, ScreenInputBridge};
 
-use crate::action::{
-    ActionExecutor, ActionType, ActionResult, DefaultActionExecutor,
-};
+use crate::action::{ActionExecutor, ActionResult, ActionType, DefaultActionExecutor};
 
 fn screen_err(e: nova_screen::ScreenError) -> String {
     format!("screen error: {e}")
 }
 
-fn run_async_screen<R>(f: impl std::future::Future<Output = Result<R, nova_screen::ScreenError>>) -> Result<R, String> {
+fn run_async_screen<R>(
+    f: impl std::future::Future<Output = Result<R, nova_screen::ScreenError>>,
+) -> Result<R, String> {
     let handle = tokio::runtime::Handle::try_current()
         .map_err(|_| "no tokio runtime available".to_string())?;
     handle.block_on(f).map_err(screen_err)
@@ -25,7 +23,9 @@ fn run_async_input(
 ) -> Result<String, String> {
     let handle = tokio::runtime::Handle::try_current()
         .map_err(|_| "no tokio runtime available".to_string())?;
-    let result = handle.block_on(f).map_err(|e| format!("input error: {e}"))?;
+    let result = handle
+        .block_on(f)
+        .map_err(|e| format!("input error: {e}"))?;
     if result.success {
         Ok(result.detail)
     } else {
@@ -55,9 +55,7 @@ fn capture_and_ground(
 }
 
 #[allow(clippy::await_holding_lock)]
-fn capture_and_ocr(
-    screen: &Arc<RwLock<ScreenEngine>>,
-) -> Result<nova_screen::OCRResult, String> {
+fn capture_and_ocr(screen: &Arc<RwLock<ScreenEngine>>) -> Result<nova_screen::OCRResult, String> {
     run_async_screen(async {
         let frame = {
             let mut eng = screen.write();
@@ -90,7 +88,8 @@ impl ActionExecutor for ScreenClickExecutor {
                 let bridge = ScreenInputBridge::new(self.input.clone());
                 match run_async_input(bridge.click_grounded(&grounding)) {
                     Ok(detail) => ActionResult::success(format!(
-                        "clicked '{}' (confidence {:.2}): {detail}", query, grounding.confidence
+                        "clicked '{}' (confidence {:.2}): {detail}",
+                        query, grounding.confidence
                     )),
                     Err(e) => ActionResult::failure(e),
                 }
@@ -102,7 +101,9 @@ impl ActionExecutor for ScreenClickExecutor {
                 };
                 let bridge = ScreenInputBridge::new(self.input.clone());
                 match run_async_input(bridge.click_ocr_text(&ocr, text)) {
-                    Ok(detail) => ActionResult::success(format!("clicked OCR text '{}': {detail}", text)),
+                    Ok(detail) => {
+                        ActionResult::success(format!("clicked OCR text '{}': {detail}", text))
+                    }
                     Err(e) => ActionResult::failure(e),
                 }
             }
@@ -172,7 +173,10 @@ impl ScreenDragExecutor {
 impl ActionExecutor for ScreenDragExecutor {
     fn execute(&self, action: &ActionType) -> ActionResult {
         match action {
-            ActionType::DragScreenElements { from_query, to_query } => {
+            ActionType::DragScreenElements {
+                from_query,
+                to_query,
+            } => {
                 let (from, to) = match capture_and_ground_two(&self.screen, from_query, to_query) {
                     Ok(pair) => pair,
                     Err(e) => return ActionResult::failure(e),
@@ -180,7 +184,8 @@ impl ActionExecutor for ScreenDragExecutor {
                 let bridge = ScreenInputBridge::new(self.input.clone());
                 match run_async_input(bridge.drag_element_to(&from.element, &to.element)) {
                     Ok(detail) => ActionResult::success(format!(
-                        "dragged '{}' -> '{}': {detail}", from_query, to_query
+                        "dragged '{}' -> '{}': {detail}",
+                        from_query, to_query
                     )),
                     Err(e) => ActionResult::failure(format!("drag failed: {e}")),
                 }
@@ -211,7 +216,10 @@ impl ScreenSwipeExecutor {
 impl ActionExecutor for ScreenSwipeExecutor {
     fn execute(&self, action: &ActionType) -> ActionResult {
         match action {
-            ActionType::SwipeScreenElements { from_query, to_query } => {
+            ActionType::SwipeScreenElements {
+                from_query,
+                to_query,
+            } => {
                 let (from, to) = match capture_and_ground_two(&self.screen, from_query, to_query) {
                     Ok(pair) => pair,
                     Err(e) => return ActionResult::failure(e),
@@ -219,7 +227,8 @@ impl ActionExecutor for ScreenSwipeExecutor {
                 let bridge = ScreenInputBridge::new(self.input.clone());
                 match run_async_input(bridge.swipe_element_to(&from.element, &to.element)) {
                     Ok(detail) => ActionResult::success(format!(
-                        "swiped '{}' -> '{}': {detail}", from_query, to_query
+                        "swiped '{}' -> '{}': {detail}",
+                        from_query, to_query
                     )),
                     Err(e) => ActionResult::failure(format!("swipe failed: {e}")),
                 }
@@ -306,7 +315,8 @@ mod tests {
         };
         let exec = ScreenTypeExecutor::new(screen, input);
         let result = exec.execute(&ActionType::Notify {
-            title: "t".into(), body: "b".into(),
+            title: "t".into(),
+            body: "b".into(),
             priority: crate::action::NotifyPriority::Normal,
         });
         assert!(result.success);

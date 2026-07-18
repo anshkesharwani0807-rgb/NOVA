@@ -10,10 +10,16 @@ pub struct WindowsScreenCapture {
 
 impl WindowsScreenCapture {
     pub fn new() -> crate::ScreenResult<Self> {
-        Ok(Self { config: None, capturing: false })
+        Ok(Self {
+            config: None,
+            capturing: false,
+        })
     }
 
-    fn do_capture(&self, config: &ScreenCaptureConfig) -> crate::ScreenResult<crate::CapturedFrame> {
+    fn do_capture(
+        &self,
+        config: &ScreenCaptureConfig,
+    ) -> crate::ScreenResult<crate::CapturedFrame> {
         unsafe {
             let sm_x = GetSystemMetrics(SM_CXSCREEN);
             let sm_y = GetSystemMetrics(SM_CYSCREEN);
@@ -26,35 +32,59 @@ impl WindowsScreenCapture {
             let hdc_mem = CreateCompatibleDC(hdc_screen);
             if hdc_mem.0.is_null() {
                 let _ = ReleaseDC(None, hdc_screen);
-                return Err(crate::ScreenError::CaptureFailed("CreateCompatibleDC failed".into()));
+                return Err(crate::ScreenError::CaptureFailed(
+                    "CreateCompatibleDC failed".into(),
+                ));
             }
 
             let h_bitmap = CreateCompatibleBitmap(hdc_screen, sm_x, sm_y);
             if h_bitmap.0.is_null() {
                 let _ = DeleteDC(hdc_mem);
                 let _ = ReleaseDC(None, hdc_screen);
-                return Err(crate::ScreenError::CaptureFailed("CreateCompatibleBitmap failed".into()));
+                return Err(crate::ScreenError::CaptureFailed(
+                    "CreateCompatibleBitmap failed".into(),
+                ));
             }
 
             let old_bitmap = SelectObject(hdc_mem, h_bitmap);
 
-            BitBlt(hdc_mem, 0, 0, sm_x, sm_y, hdc_screen, 0, 0, SRCCOPY | CAPTUREBLT)?;
+            BitBlt(
+                hdc_mem,
+                0,
+                0,
+                sm_x,
+                sm_y,
+                hdc_screen,
+                0,
+                0,
+                SRCCOPY | CAPTUREBLT,
+            )?;
 
             let mut bmp_info: BITMAP = std::mem::zeroed();
-            GetObjectW(h_bitmap, std::mem::size_of::<BITMAP>() as i32, Some(&mut bmp_info as *mut _ as *mut std::ffi::c_void));
+            GetObjectW(
+                h_bitmap,
+                std::mem::size_of::<BITMAP>() as i32,
+                Some(&mut bmp_info as *mut _ as *mut std::ffi::c_void),
+            );
 
             if bmp_info.bmWidthBytes == 0 || bmp_info.bmHeight == 0 {
                 let _ = SelectObject(hdc_mem, old_bitmap);
                 let _ = DeleteObject(h_bitmap);
                 let _ = DeleteDC(hdc_mem);
                 let _ = ReleaseDC(None, hdc_screen);
-                return Err(crate::ScreenError::CaptureFailed("GetObjectW returned invalid bitmap info".into()));
+                return Err(crate::ScreenError::CaptureFailed(
+                    "GetObjectW returned invalid bitmap info".into(),
+                ));
             }
 
             let src_stride = bmp_info.bmWidthBytes as usize;
             let total_size = src_stride * bmp_info.bmHeight as usize;
             let mut full_data: Vec<u8> = vec![0u8; total_size];
-            GetBitmapBits(h_bitmap, total_size as i32, full_data.as_mut_ptr() as *mut std::ffi::c_void);
+            GetBitmapBits(
+                h_bitmap,
+                total_size as i32,
+                full_data.as_mut_ptr() as *mut std::ffi::c_void,
+            );
 
             let _ = SelectObject(hdc_mem, old_bitmap);
             let _ = DeleteObject(h_bitmap);
@@ -79,7 +109,8 @@ impl WindowsScreenCapture {
                 for y in 0..rh {
                     let src_off = (ry + y) * src_stride + rx * 4;
                     let dst_off = y * dst_stride;
-                    buf[dst_off..dst_off + dst_stride].copy_from_slice(&full_data[src_off..src_off + dst_stride]);
+                    buf[dst_off..dst_off + dst_stride]
+                        .copy_from_slice(&full_data[src_off..src_off + dst_stride]);
                 }
                 buf
             } else {
@@ -148,11 +179,17 @@ impl crate::ScreenCapture for WindowsScreenCapture {
         if !self.capturing {
             return Err(crate::ScreenError::NotCapturing);
         }
-        let config = self.config.as_ref().ok_or(crate::ScreenError::NotInitialized)?;
+        let config = self
+            .config
+            .as_ref()
+            .ok_or(crate::ScreenError::NotInitialized)?;
         self.do_capture(config)
     }
 
-    async fn start_stream(&mut self, _tx: tokio::sync::mpsc::Sender<crate::CapturedFrame>) -> crate::ScreenResult<()> {
+    async fn start_stream(
+        &mut self,
+        _tx: tokio::sync::mpsc::Sender<crate::CapturedFrame>,
+    ) -> crate::ScreenResult<()> {
         Ok(())
     }
 

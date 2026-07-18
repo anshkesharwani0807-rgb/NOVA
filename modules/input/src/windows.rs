@@ -14,9 +14,7 @@ impl WindowsInputProvider {
     }
 
     fn screen_size() -> (i32, i32) {
-        unsafe {
-            (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN))
-        }
+        unsafe { (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)) }
     }
 
     fn send(inputs: &[INPUT]) -> InputResult<u32> {
@@ -59,7 +57,12 @@ impl WindowsInputProvider {
         let (sw, sh) = Self::screen_size();
         let nx = Self::normalize_coord(x, sw);
         let ny = Self::normalize_coord(y, sh);
-        Self::mouse_input(nx as i32, ny as i32, 0, MOUSE_EVENT_FLAGS(MOUSEEVENTF_MOVE.0 | MOUSEEVENTF_ABSOLUTE.0))
+        Self::mouse_input(
+            nx as i32,
+            ny as i32,
+            0,
+            MOUSE_EVENT_FLAGS(MOUSEEVENTF_MOVE.0 | MOUSEEVENTF_ABSOLUTE.0),
+        )
     }
 
     fn mouse_move_rel(dx: i32, dy: i32) -> INPUT {
@@ -248,7 +251,11 @@ impl InputEngine for WindowsInputProvider {
 
     async fn execute(&self, action: &InputAction) -> InputResult<ActionResult> {
         match action {
-            InputAction::Mouse(MouseAction::Click { point, button, count }) => {
+            InputAction::Mouse(MouseAction::Click {
+                point,
+                button,
+                count,
+            }) => {
                 let mut inputs = Vec::new();
                 inputs.push(Self::mouse_move_abs(point.x, point.y));
                 for _ in 0..*count {
@@ -258,7 +265,10 @@ impl InputEngine for WindowsInputProvider {
                 Self::send(&inputs)?;
                 Ok(ActionResult::success(format!(
                     "{}x{} click at ({}, {})",
-                    count, button_name(button), point.x, point.y
+                    count,
+                    button_name(button),
+                    point.x,
+                    point.y
                 )))
             }
 

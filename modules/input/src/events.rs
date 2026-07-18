@@ -48,7 +48,12 @@ impl InputEvent {
 
     pub fn description(&self) -> String {
         match &self.payload {
-            InputEventPayload::ActionExecuted { action, success, detail, duration_ms } => {
+            InputEventPayload::ActionExecuted {
+                action,
+                success,
+                detail,
+                duration_ms,
+            } => {
                 format!("Input {action}: {detail} (success={success}, {duration_ms}ms)")
             }
             InputEventPayload::ActionBlocked { action, reason } => {
