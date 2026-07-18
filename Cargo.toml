@@ -14,15 +14,16 @@ members = [
     "modules/automation",
     "modules/plugin_sdk",
     "modules/plugin_host",
-    "api/ffi",
-    "api/jni",
-    "apps/nova-demo",
-    "apps/nova-desktop",
+    "modules/screen",
     "modules/cross_device",
     "modules/windows_agent",
     "modules/transport",
     "modules/pairing",
     "modules/security",
+    "api/ffi",
+    "api/jni",
+    "apps/nova-demo",
+    "apps/nova-desktop",
 ]
 
 [workspace.dependencies]

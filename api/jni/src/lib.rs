@@ -223,3 +223,72 @@ pub extern "system" fn Java_com_example_nova_NovaCore_nativeSearchStats(
     let result = nova_ffi::nova_search_stats();
     jni_result(&mut env, result)
 }
+
+// ---------------------------------------------------------------------------
+// Android screen capture JNI entry points (Android-only)
+// ---------------------------------------------------------------------------
+
+/// Kotlin calls this once at app start to provide the Application Context.
+/// Required by AndroidScreenCapture for DisplayMetrics queries.
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn Java_com_example_nova_NovaCore_nativeSetApplicationContext(
+    mut env: JNIEnv,
+    _class: JClass,
+    context: JObject,
+) {
+    nova_screen::jni_bridge::set_application_context(&env, &context);
+}
+
+/// Kotlin calls this after the user grants screen-capture permission
+/// via `MediaProjectionManager.getMediaProjection(resultCode, data)`.
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn Java_com_example_nova_NovaCore_nativeSetMediaProjection(
+    mut env: JNIEnv,
+    _class: JClass,
+    media_projection: JObject,
+) {
+    nova_screen::capture::android::set_media_projection(&env, &media_projection);
+}
+
+/// Returns JNI_TRUE if a MediaProjection reference is available.
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn Java_com_example_nova_NovaCore_nativeHasMediaProjection(
+    _env: JNIEnv,
+    _class: JClass,
+) -> jboolean {
+    if nova_screen::capture::android::has_media_projection() {
+        JNI_TRUE
+    } else {
+        0
+    }
+}
+
+/// Kotlin calls this when the AccessibilityService connects
+/// (`onServiceConnected`).  `service` is the
+/// `android.accessibilityservice.AccessibilityService` instance.
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn Java_com_example_nova_NovaCore_nativeSetAccessibilityService(
+    mut env: JNIEnv,
+    _class: JClass,
+    service: JObject,
+) {
+    nova_screen::ui_tree::set_accessibility_service(&env, &service);
+}
+
+/// Returns JNI_TRUE if the AccessibilityService reference is available.
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "system" fn Java_com_example_nova_NovaCore_nativeHasAccessibilityService(
+    _env: JNIEnv,
+    _class: JClass,
+) -> jboolean {
+    if nova_screen::ui_tree::has_accessibility_service() {
+        JNI_TRUE
+    } else {
+        0
+    }
+}

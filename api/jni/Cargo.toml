@@ -9,3 +9,4 @@ crate-type = ["cdylib"]
 [dependencies]
 jni = { version = "0.21", features = ["invocation"] }
 nova_ffi = { path = "../ffi" }
+nova_screen = { path = "../../modules/screen" }
