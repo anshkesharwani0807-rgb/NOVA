@@ -8,6 +8,8 @@ nova_kernel = { path = "../../src/kernel" }
 nova_memory = { path = "../memory" }
 nova_search = { path = "../search" }
 nova_ai = { path = "../ai" }
+nova_input = { path = "../input" }
+nova_screen = { path = "../screen" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }

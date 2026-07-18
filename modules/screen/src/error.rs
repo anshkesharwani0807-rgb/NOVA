@@ -62,3 +62,13 @@ pub enum ScreenError {
 }
 
 pub type ScreenResult<T> = Result<T, ScreenError>;
+
+impl From<ScreenError> for nova_kernel::NovaError {
+    fn from(e: ScreenError) -> Self {
+        nova_kernel::NovaError::new(
+            nova_kernel::ErrorCategory::Internal,
+            "ERR_SCREEN",
+            &e.to_string(),
+        )
+    }
+}

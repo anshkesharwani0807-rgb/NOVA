@@ -30,6 +30,7 @@ nova_sync = { path = "../../modules/sync" }
 nova_transport = { path = "../../modules/transport" }
 nova_windows_agent = { path = "../../modules/windows_agent" }
 nova_cross_device = { path = "../../modules/cross_device" }
+nova_input = { path = "../../modules/input" }
 nova_screen = { path = "../../modules/screen" }
 tokio = { workspace = true }
 async-trait = { workspace = true }

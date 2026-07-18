@@ -1,0 +1,27 @@
+[package]
+name = "nova_input"
+version = "0.1.0"
+edition = "2021"
+description = "Cross-platform input injection & computer control (M18)"
+
+[dependencies]
+nova_kernel = { path = "../../src/kernel" }
+nova_security = { path = "../security" }
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+parking_lot.workspace = true
+tokio.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = { version = "0.21", features = ["invocation"] }

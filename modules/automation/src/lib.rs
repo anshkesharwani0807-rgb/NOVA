@@ -1,21 +1,29 @@
 mod action;
 mod condition;
 mod config;
+mod consent_gate;
+mod controller;
 mod error;
 mod events;
 mod execution;
 mod history;
+mod real_executors;
 mod registry;
 mod scheduler;
+mod screen_executor;
 mod trigger;
 mod workflow;
 
 pub use action::*;
 pub use condition::*;
 pub use config::*;
+pub use consent_gate::*;
+pub use controller::*;
 pub use error::*;
 pub use events::*;
 pub use execution::*;
+pub use real_executors::*;
+pub use screen_executor::*;
 pub use history::*;
 pub use registry::*;
 pub use scheduler::*;
@@ -56,6 +64,14 @@ impl AutomationEngine {
 
     pub fn set_event_bus(&self, bus: Arc<EventBus>) {
         *self.event_bus.write() = Some(bus);
+    }
+
+    pub fn set_consent_gate(&self, gate: Arc<ConsentGate>) {
+        self.executor.set_consent_gate(gate);
+    }
+
+    pub fn set_autonomy_level(&self, level: &str) {
+        self.executor.set_autonomy_level(level);
     }
 
     pub fn registry(&self) -> &WorkflowRegistry {

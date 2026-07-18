@@ -4,7 +4,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::action::{ActionExecutor, ActionType, DefaultActionExecutor};
+use crate::action::{ActionExecutor, ActionType, DefaultActionExecutor, InputInjectionParams, ActionResult};
+use crate::screen_executor::ScreenAwareExecutor;
+use crate::real_executors::{ScreenClickExecutor, ScreenTypeExecutor, ScreenDragExecutor, ScreenSwipeExecutor};
+use crate::consent_gate::{ConsentDecision, ConsentGate};
 use crate::condition::{ConditionEvaluator, DefaultConditionEvaluator};
 use crate::config::AutomationConfig;
 use crate::error::AutomationError;
@@ -12,12 +15,204 @@ use crate::events::AutomationEventPayload;
 use crate::history::{ExecutionRecord, ExecutionStatus, HistoryStore};
 use crate::workflow::{Workflow, WorkflowStep};
 
+/// Wraps DefaultActionExecutor with InputEngine support for input injection.
+pub struct InputAwareExecutor {
+    input_engine: Option<Arc<dyn nova_input::InputEngine>>,
+}
+
+impl InputAwareExecutor {
+    pub fn new(input_engine: Option<Arc<dyn nova_input::InputEngine>>) -> Self {
+        Self { input_engine }
+    }
+
+    fn execute_input(&self, params: &InputInjectionParams) -> ActionResult {
+        let engine = match self.input_engine.as_ref() {
+            Some(e) => e.clone(),
+            None => return ActionResult::failure("input engine not configured"),
+        };
+
+        let input_action = match params.action_type.as_str() {
+            "click" => nova_input::InputAction::Mouse(nova_input::MouseAction::Click {
+                point: nova_input::Point {
+                    x: params.get_i32("x", 0),
+                    y: params.get_i32("y", 0),
+                },
+                button: parse_mouse_button(&params.params.get("button").map(String::as_str)),
+                count: params.get_i32("count", 1) as u32,
+            }),
+            "double_click" => nova_input::InputAction::Mouse(nova_input::MouseAction::Click {
+                point: nova_input::Point {
+                    x: params.get_i32("x", 0),
+                    y: params.get_i32("y", 0),
+                },
+                button: parse_mouse_button(&params.params.get("button").map(String::as_str)),
+                count: 2,
+            }),
+            "right_click" => nova_input::InputAction::Mouse(nova_input::MouseAction::Click {
+                point: nova_input::Point {
+                    x: params.get_i32("x", 0),
+                    y: params.get_i32("y", 0),
+                },
+                button: nova_input::MouseButton::Right,
+                count: 1,
+            }),
+            "move" => nova_input::InputAction::Mouse(nova_input::MouseAction::Move {
+                point: nova_input::Point {
+                    x: params.get_i32("x", 0),
+                    y: params.get_i32("y", 0),
+                },
+                absolute: true,
+            }),
+            "drag" => nova_input::InputAction::Mouse(nova_input::MouseAction::Drag {
+                from: nova_input::Point {
+                    x: params.get_i32("from_x", 0),
+                    y: params.get_i32("from_y", 0),
+                },
+                to: nova_input::Point {
+                    x: params.get_i32("to_x", 0),
+                    y: params.get_i32("to_y", 0),
+                },
+                button: parse_mouse_button(&params.params.get("button").map(String::as_str)),
+            }),
+            "scroll" => nova_input::InputAction::Mouse(nova_input::MouseAction::Scroll {
+                delta_x: params.get_i32("delta_x", 0),
+                delta_y: params.get_i32("delta_y", 0),
+            }),
+            "type" => nova_input::InputAction::Keyboard(nova_input::KeyboardAction::TypeText {
+                text: params.params.get("text").cloned().unwrap_or_default(),
+            }),
+            "key_press" => nova_input::InputAction::Keyboard(nova_input::KeyboardAction::KeyPress {
+                key: params.params.get("key").cloned().unwrap_or_default(),
+                modifiers: parse_modifiers(&params.params.get("modifiers").map(String::as_str)),
+            }),
+            "key_release" => nova_input::InputAction::Keyboard(
+                nova_input::KeyboardAction::KeyRelease {
+                    key: params.params.get("key").cloned().unwrap_or_default(),
+                },
+            ),
+            "hotkey" => {
+                let keys_str = params.params.get("keys").cloned().unwrap_or_default();
+                let keys: Vec<String> = keys_str.split(',').map(|s| s.trim().to_string()).collect();
+                nova_input::InputAction::Keyboard(nova_input::KeyboardAction::Hotkey { keys })
+            }
+            "tap" => nova_input::InputAction::Touch(nova_input::TouchAction::Tap {
+                point: nova_input::Point {
+                    x: params.get_i32("x", 0),
+                    y: params.get_i32("y", 0),
+                },
+            }),
+            "double_tap" => nova_input::InputAction::Touch(nova_input::TouchAction::DoubleTap {
+                point: nova_input::Point {
+                    x: params.get_i32("x", 0),
+                    y: params.get_i32("y", 0),
+                },
+            }),
+            "long_press" => nova_input::InputAction::Touch(nova_input::TouchAction::LongPress {
+                point: nova_input::Point {
+                    x: params.get_i32("x", 0),
+                    y: params.get_i32("y", 0),
+                },
+                duration_ms: params.get_u64("duration_ms", 500),
+            }),
+            "swipe" => nova_input::InputAction::Touch(nova_input::TouchAction::Swipe {
+                from: nova_input::Point {
+                    x: params.get_i32("from_x", 0),
+                    y: params.get_i32("from_y", 0),
+                },
+                to: nova_input::Point {
+                    x: params.get_i32("to_x", 0),
+                    y: params.get_i32("to_y", 0),
+                },
+                duration_ms: params.get_u64("duration_ms", 200),
+            }),
+            "pinch" => nova_input::InputAction::Touch(nova_input::TouchAction::Pinch {
+                center: nova_input::Point {
+                    x: params.get_i32("x", 0),
+                    y: params.get_i32("y", 0),
+                },
+                scale: params.get_f32("scale", 1.5),
+                duration_ms: params.get_u64("duration_ms", 300),
+            }),
+            "back" | "home" | "recents" => {
+                nova_input::InputAction::Keyboard(nova_input::KeyboardAction::KeyPress {
+                    key: params.action_type.clone(),
+                    modifiers: Vec::new(),
+                })
+            }
+            "wait" => nova_input::InputAction::Wait {
+                duration_ms: params.get_u64("duration_ms", 1000),
+            },
+            other => {
+                return ActionResult::failure(format!("unsupported input action: {other}"));
+            }
+        };
+
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => match handle.block_on(engine.execute(&input_action)) {
+                Ok(result) => ActionResult::success(format!("input: {}", result.detail)),
+                Err(e) => ActionResult::failure(format!("input error: {e}")),
+            },
+            Err(_) => ActionResult::failure("no tokio runtime available for input execution"),
+        }
+    }
+}
+
+fn parse_mouse_button(button: &Option<&str>) -> nova_input::MouseButton {
+    match button.and_then(|b| {
+        if b.eq_ignore_ascii_case("right") {
+            Some(nova_input::MouseButton::Right)
+        } else if b.eq_ignore_ascii_case("middle") {
+            Some(nova_input::MouseButton::Middle)
+        } else {
+            None
+        }
+    }) {
+        Some(b) => b,
+        None => nova_input::MouseButton::Left,
+    }
+}
+
+fn parse_modifiers(modifiers: &Option<&str>) -> Vec<nova_input::Modifier> {
+    let raw = match modifiers {
+        Some(s) => s,
+        None => return Vec::new(),
+    };
+    raw.split(',')
+        .map(|s| match s.trim().to_lowercase().as_str() {
+            "ctrl" | "control" => nova_input::Modifier::Ctrl,
+            "alt" => nova_input::Modifier::Alt,
+            "shift" => nova_input::Modifier::Shift,
+            "win" | "windows" | "super" => nova_input::Modifier::Win,
+            "meta" | "cmd" | "command" => nova_input::Modifier::Meta,
+            _ => nova_input::Modifier::Ctrl,
+        })
+        .collect()
+}
+
+impl ActionExecutor for InputAwareExecutor {
+    fn execute(&self, action: &ActionType) -> ActionResult {
+        match action {
+            ActionType::InputInjection(params) => self.execute_input(params),
+            other => {
+                let inner = DefaultActionExecutor;
+                inner.execute(other)
+            }
+        }
+    }
+
+    fn kind(&self) -> &'static str {
+        "input-aware"
+    }
+}
+
 pub struct ExecutionEngine {
-    _config: AutomationConfig,
+    config: AutomationConfig,
     action_executors: RwLock<HashMap<String, Box<dyn ActionExecutor>>>,
     condition_evaluator: DefaultConditionEvaluator,
     history: Arc<dyn HistoryStore>,
     active_executions: RwLock<HashMap<String, Arc<ExecutionState>>>,
+    consent_gate: RwLock<Option<Arc<ConsentGate>>>,
+    autonomy_level: RwLock<String>,
 }
 
 struct ExecutionState {
@@ -27,14 +222,80 @@ struct ExecutionState {
 impl ExecutionEngine {
     pub fn new(config: AutomationConfig, history: Arc<dyn HistoryStore>) -> Self {
         let mut executors: HashMap<String, Box<dyn ActionExecutor>> = HashMap::new();
-        executors.insert("default".to_string(), Box::new(DefaultActionExecutor));
+        let default_exec: Box<dyn ActionExecutor> =
+            Box::new(DefaultActionExecutor);
+        executors.insert("default".to_string(), default_exec);
         Self {
-            _config: config,
+            autonomy_level: RwLock::new("conservative".to_string()),
+            config,
             action_executors: RwLock::new(executors),
             condition_evaluator: DefaultConditionEvaluator,
             history,
             active_executions: RwLock::new(HashMap::new()),
+            consent_gate: RwLock::new(None),
         }
+    }
+
+    pub fn set_consent_gate(&self, gate: Arc<ConsentGate>) {
+        *self.consent_gate.write() = Some(gate);
+    }
+
+    pub fn set_autonomy_level(&self, level: &str) {
+        *self.autonomy_level.write() = level.to_string();
+    }
+
+    pub fn with_input_engine(mut self, input_engine: Arc<dyn nova_input::InputEngine>) -> Self {
+        let executor: Box<dyn ActionExecutor> =
+            Box::new(InputAwareExecutor::new(Some(input_engine)));
+        self.action_executors.get_mut().insert("default".to_string(), executor);
+        self
+    }
+
+    pub fn set_input_engine(&self, engine: Arc<dyn nova_input::InputEngine>) {
+        let executor: Box<dyn ActionExecutor> =
+            Box::new(InputAwareExecutor::new(Some(engine)));
+        self.action_executors.write().insert("default".to_string(), executor);
+    }
+
+    pub fn with_screen_engine(mut self, screen_engine: Arc<parking_lot::RwLock<nova_screen::ScreenEngine>>) -> Self {
+        let executor: Box<dyn ActionExecutor> =
+            Box::new(ScreenAwareExecutor::new(Some(screen_engine), None));
+        self.action_executors.get_mut().insert("default".to_string(), executor);
+        self
+    }
+
+    pub fn set_screen_engine(&self, screen_engine: Arc<parking_lot::RwLock<nova_screen::ScreenEngine>>) {
+        let executor: Box<dyn ActionExecutor> =
+            Box::new(ScreenAwareExecutor::new(Some(screen_engine), None));
+        self.action_executors.write().insert("default".to_string(), executor);
+    }
+
+    pub fn set_screen_and_input(
+        &self,
+        screen_engine: Arc<parking_lot::RwLock<nova_screen::ScreenEngine>>,
+        input_engine: Arc<dyn nova_input::InputEngine>,
+    ) {
+        let mut executors = self.action_executors.write();
+        executors.insert(
+            "default".to_string(),
+            Box::new(ScreenAwareExecutor::new(Some(screen_engine.clone()), Some(input_engine.clone()))),
+        );
+        executors.insert(
+            "click".to_string(),
+            Box::new(ScreenClickExecutor::new(screen_engine.clone(), input_engine.clone())),
+        );
+        executors.insert(
+            "type".to_string(),
+            Box::new(ScreenTypeExecutor::new(screen_engine.clone(), input_engine.clone())),
+        );
+        executors.insert(
+            "drag".to_string(),
+            Box::new(ScreenDragExecutor::new(screen_engine.clone(), input_engine.clone())),
+        );
+        executors.insert(
+            "swipe".to_string(),
+            Box::new(ScreenSwipeExecutor::new(screen_engine, input_engine)),
+        );
     }
 
     pub fn register_executor(&self, name: &str, executor: Box<dyn ActionExecutor>) {
@@ -257,19 +518,76 @@ impl ExecutionEngine {
             }
         }
 
+        // Check consent gate
+        let consent_decision = self.consent_gate.read().as_ref().map(|gate| {
+            let level = self.autonomy_level.read().clone();
+            gate.check_action(&step.action, &level)
+        });
+        if let Some(decision) = consent_decision {
+            match decision {
+                ConsentDecision::Allowed => {}
+                ConsentDecision::Blocked { reason } => {
+                    publish(AutomationEventPayload::AutomationError {
+                        workflow_id: workflow_id.to_string(),
+                        error: format!("step {idx} blocked by consent: {reason}"),
+                    });
+                    return StepOutcome {
+                        step_id: step.id.clone(),
+                        step_index: idx,
+                        success: false,
+                        message: format!("blocked by consent: {reason}"),
+                        data: None,
+                    };
+                }
+                ConsentDecision::RequiresPrompt { stakes: _, description } => {
+                    publish(AutomationEventPayload::AutomationError {
+                        workflow_id: workflow_id.to_string(),
+                        error: format!("step {idx} requires user consent: {description}"),
+                    });
+                    return StepOutcome {
+                        step_id: step.id.clone(),
+                        step_index: idx,
+                        success: false,
+                        message: format!("requires user consent: {description}"),
+                        data: None,
+                    };
+                }
+            }
+        }
+
+        // Determine timeout per step
+        let step_timeout = if step.timeout_ms > 0 {
+            step.timeout_ms
+        } else {
+            self.config.step_timeout_ms
+        };
+
         // Execute with retry
         let effective_max = step.retry_count.max(max_retries);
         let mut last_error = String::new();
 
         for attempt in 0..=effective_max {
             if attempt > 0 {
-                std::thread::sleep(std::time::Duration::from_millis(1000));
+                let delay = self.config.retry_delay_ms * (1u64 << attempt.min(5));
+                std::thread::sleep(std::time::Duration::from_millis(delay.min(10_000)));
             }
 
             let action_kind = action_kind_name(&step.action);
 
-            let executor = DefaultActionExecutor;
-            let result = executor.execute(&step.action);
+            let executors = self.action_executors.read();
+
+            let executor_name = named_executor_for(action_kind);
+            let executor = executors.get(executor_name)
+                .or_else(|| executors.get("default"));
+
+            let result = match executor {
+                Some(exec) => exec.execute(&step.action),
+                None => {
+                    let fallback = DefaultActionExecutor;
+                    fallback.execute(&step.action)
+                }
+            };
+            drop(executors);
 
             publish(AutomationEventPayload::ActionExecuted {
                 workflow_id: workflow_id.to_string(),
@@ -295,13 +613,17 @@ impl ExecutionEngine {
             }
 
             last_error = result.message;
+
+            if last_error.contains("timed out") || last_error.contains("timeout") {
+                break;
+            }
         }
 
         publish(AutomationEventPayload::AutomationError {
             workflow_id: workflow_id.to_string(),
             error: format!(
-                "step {} failed after {} retries: {}",
-                idx, effective_max, last_error
+                "step {} failed after {} retries within {}ms: {}",
+                idx, effective_max, step_timeout, last_error
             ),
         });
 
@@ -355,5 +677,21 @@ fn action_kind_name(action: &ActionType) -> &'static str {
         ActionType::PluginInvocation { .. } => "plugin",
         ActionType::Wait { .. } => "wait",
         ActionType::SubWorkflow { .. } => "sub_workflow",
+        ActionType::InputInjection(..) => "input_injection",
+        ActionType::ClickScreenElement { .. } => "click_screen_element",
+        ActionType::TypeIntoScreenElement { .. } => "type_into_screen_element",
+        ActionType::ClickScreenText { .. } => "click_screen_text",
+        ActionType::DragScreenElements { .. } => "drag_screen_elements",
+        ActionType::SwipeScreenElements { .. } => "swipe_screen_elements",
+    }
+}
+
+fn named_executor_for(action_kind: &str) -> &str {
+    match action_kind {
+        "click_screen_element" | "click_screen_text" => "click",
+        "type_into_screen_element" => "type",
+        "drag_screen_elements" => "drag",
+        "swipe_screen_elements" => "swipe",
+        _ => "default",
     }
 }

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 nova_kernel = { path = "../../src/kernel" }
+nova_input = { path = "../input" }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

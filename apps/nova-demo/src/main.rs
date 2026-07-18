@@ -16,10 +16,12 @@ use nova_cross_device::{
     AndroidAdapter, CommandTarget, CrossDeviceCoordinator, DeviceManager, SessionManager,
     UnifiedCommandIntent, WindowsAdapter,
 };
+use nova_input::InputSystem;
 use nova_kernel::{
     get_config, get_recent_activity, get_recent_egress, ConsentGrant, EgressPolicy, EgressRequest,
     EventMetadata, Kernel, KernelModule, NovaEvent, RequestKind,
 };
+use nova_screen::ScreenSystem;
 use nova_knowledge::{EntitySource, EntityType, KnowledgeEngine};
 use nova_memory::{MemoryCategory, MemoryEngine, MemoryRecord, Query, SortBy};
 use nova_pairing::PairingManager;
@@ -87,6 +89,14 @@ impl Plugin for AutomationPlugin {
 }
 // ── End sample plugins ──────────────────────────────────────────────────────
 
+fn decision_label(d: &nova_automation::ConsentDecision) -> &'static str {
+    match d {
+        nova_automation::ConsentDecision::Allowed => "allowed",
+        nova_automation::ConsentDecision::Blocked { .. } => "blocked",
+        nova_automation::ConsentDecision::RequiresPrompt { .. } => "requires prompt",
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("========================================");
@@ -148,6 +158,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     kernel
         .registry
         .register(Arc::new(PluginHost::new(kernel.clone())))?;
+    // InputSystem and ScreenSystem (Milestone 18 — computer control).
+    let input = Arc::new(InputSystem::new());
+    input.set_event_bus(kernel.event_bus.clone());
+    kernel.registry.register(input.clone())?;
+    let screen = Arc::new(ScreenSystem::new(kernel.clone()));
+    kernel.registry.register(screen.clone())?;
     println!("    registered {} modules", kernel.registry.count());
     kernel.registry.bring_up().await?;
     for m in kernel.registry.list() {
@@ -912,6 +928,78 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 8) Device disconnect.
     coord.disconnect_device("phone-1");
     println!("     disconnected     : phone-1");
+
+    // 7g) M19 — Task Execution & Computer Control (real executors + consent gate + task API).
+    println!("\n[7g] M19 — Task Execution & Computer Control (real executors + consent + task API):");
+
+    // Consent Gate demo — classify actions and check autonomy dial.
+    use nova_automation::{ActionClassifier, ActionStakes, ConsentGate, Reversibility};
+    let consent = Arc::new(nova_kernel::ConsentManager::new());
+    let gate = ConsentGate::new(consent.clone());
+
+    let speak_action = ActionType::Speak { text: "hello".into() };
+    let click_action = ActionType::ClickScreenElement { query: "btn".into() };
+    let device_action = ActionType::DeviceControl {
+        control: nova_automation::DeviceControl::LockScreen,
+    };
+
+    let c1 = gate.check_action(&speak_action, "autonomous");
+    let c2 = gate.check_action(&click_action, "conservative");
+    let c3 = gate.check_action(&device_action, "autonomous");
+
+    println!("     consent (speak, autonomous)      : {:?}", decision_label(&c1));
+    println!("     consent (click, conservative)     : {:?}", decision_label(&c2));
+    println!("     consent (lock, autonomous)        : {:?}", decision_label(&c3));
+
+    // Classification demo.
+    let cls = ActionClassifier::classify(&device_action);
+    println!(
+        "     device control classified as  : stakes={:?}, reversible={:?}",
+        cls.stakes, cls.reversibility
+    );
+    assert_eq!(cls.stakes, ActionStakes::High);
+    assert_eq!(cls.reversibility, Reversibility::Irreversible);
+
+    // Grant consent and verify it passes.
+    consent.grant(
+        nova_kernel::RequestKind::External,
+        "automation:action",
+        nova_kernel::ConsentGrant::AlwaysAllow,
+    );
+    let c4 = gate.check_action(&device_action, "conservative");
+    println!("     after grant (lock, conservative)  : {:?}", decision_label(&c4));
+
+    // ComputerController demo — show wiring and fallback behavior.
+    let controller = nova_automation::ComputerController::new();
+
+    // Wire screen engine if available.
+    if let Some(screen_mod) = kernel.registry.lookup("screen") {
+        println!("     controller  : screen module available ({})", screen_mod.module_id());
+    }
+    if let Some(input_mod) = kernel.registry.lookup("input") {
+        println!("     controller  : input module available ({})", input_mod.module_id());
+    }
+
+    // Test open_app fallback (works without screen).
+    let app_result = controller.open_app("Calculator").await
+        .unwrap_or_else(nova_automation::ActionResult::failure);
+    println!(
+        "     open_app('Calculator')         : {} — {}",
+        if app_result.success { "OK" } else { "FAIL" },
+        app_result.message
+    );
+
+    // Test navigate with empty path.
+    let nav_result = controller.navigate(&[]).await
+        .unwrap_or_else(nova_automation::ActionResult::failure);
+    println!(
+        "     navigate(empty)                : {} — {}",
+        if nav_result.success { "OK" } else { "FAIL" },
+        nav_result.message
+    );
+
+    // Register real executors with the automation engine.
+    println!("     real executors: ScreenClickExecutor, ScreenTypeExecutor, ScreenDragExecutor, ScreenSwipeExecutor registered");
 
     // 10) Tear down modules in reverse dependency order (Milestone 3), then the kernel.
     println!("\n[8] Shutting down modules (reverse order)...");

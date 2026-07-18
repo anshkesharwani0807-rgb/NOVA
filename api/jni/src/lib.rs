@@ -269,6 +269,7 @@ pub extern "system" fn Java_com_example_nova_NovaCore_nativeHasMediaProjection(
 /// Kotlin calls this when the AccessibilityService connects
 /// (`onServiceConnected`).  `service` is the
 /// `android.accessibilityservice.AccessibilityService` instance.
+/// Sets the service reference for both screen (perception) and input (control).
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "system" fn Java_com_example_nova_NovaCore_nativeSetAccessibilityService(
@@ -277,6 +278,7 @@ pub extern "system" fn Java_com_example_nova_NovaCore_nativeSetAccessibilityServ
     service: JObject,
 ) {
     nova_screen::ui_tree::set_accessibility_service(&env, &service);
+    nova_input::android_set_accessibility_service(&env, &service);
 }
 
 /// Returns JNI_TRUE if the AccessibilityService reference is available.

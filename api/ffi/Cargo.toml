@@ -13,7 +13,9 @@ nova_search = { path = "../../modules/search" }
 nova_voice = { path = "../../modules/voice" }
 nova_ai = { path = "../../modules/ai" }
 nova_comms = { path = "../../modules/comms" }
+nova_input = { path = "../../modules/input" }
 nova_plugin_host = { path = "../../modules/plugin_host" }
+nova_screen = { path = "../../modules/screen" }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

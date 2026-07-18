@@ -11,6 +11,7 @@ pub mod config;
 pub mod events;
 pub mod permission;
 pub mod engine;
+pub mod input;
 
 pub use types::*;
 
@@ -21,6 +22,7 @@ pub use events::{ScreenEvent, ScreenEventPayload};
 pub use permission::{ScreenCapability, ScreenPermissionManager};
 pub use engine::{ScreenEngine, ScreenAnalysis};
 pub use traits::{UITreeExtractor, OCREngine, VisualGrounding};
+pub use input::{ScreenInputBridge, ScreenInputTarget, ScreenInputAction, InputActionExt};
 
 use async_trait::async_trait;
 use nova_kernel::{ErrorCategory, Kernel, KernelModule, ModuleHealth, NovaError, Result, EventMetadata, NovaEvent, log_activity};
@@ -103,7 +105,7 @@ impl KernelModule for ScreenSystem {
     }
 
     fn dependencies(&self) -> Vec<&'static str> {
-        Vec::new()
+        vec!["input"]
     }
 
     async fn initialize(&self) -> Result<()> {

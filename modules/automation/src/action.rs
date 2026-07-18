@@ -1,6 +1,43 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Parameters for injecting an input action through the InputEngine.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InputInjectionParams {
+    /// Action type string — one of:
+    ///   click, double_click, right_click, type, key_press, key_release,
+    ///   hotkey, scroll, tap, double_tap, long_press, swipe, pinch,
+    ///   move, drag, back, home, recents, wait
+    pub action_type: String,
+    /// Key-value parameters for the action.
+    /// Common keys: x, y, button, text, key, keys, duration_ms,
+    ///   from_x, from_y, to_x, to_y, delta_x, delta_y, count, scale
+    pub params: HashMap<String, String>,
+}
+
+impl InputInjectionParams {
+    pub fn get_i32(&self, key: &str, default: i32) -> i32 {
+        self.params
+            .get(key)
+            .and_then(|v| v.parse::<i32>().ok())
+            .unwrap_or(default)
+    }
+
+    pub fn get_u64(&self, key: &str, default: u64) -> u64 {
+        self.params
+            .get(key)
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(default)
+    }
+
+    pub fn get_f32(&self, key: &str, default: f32) -> f32 {
+        self.params
+            .get(key)
+            .and_then(|v| v.parse::<f32>().ok())
+            .unwrap_or(default)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ActionType {
     Speak {
@@ -59,6 +96,25 @@ pub enum ActionType {
     },
     SubWorkflow {
         workflow_id: String,
+    },
+    InputInjection(InputInjectionParams),
+    ClickScreenElement {
+        query: String,
+    },
+    TypeIntoScreenElement {
+        query: String,
+        text: String,
+    },
+    ClickScreenText {
+        text: String,
+    },
+    DragScreenElements {
+        from_query: String,
+        to_query: String,
+    },
+    SwipeScreenElements {
+        from_query: String,
+        to_query: String,
     },
 }
 
@@ -177,6 +233,43 @@ impl ActionExecutor for DefaultActionExecutor {
             }
             ActionType::SubWorkflow { workflow_id } => {
                 ActionResult::success(format!("sub-workflow: {}", workflow_id))
+            }
+            ActionType::InputInjection(params) => {
+                ActionResult::failure(format!(
+                    "input injection requires InputEngine: {} with {} params",
+                    params.action_type,
+                    params.params.len()
+                ))
+            }
+            ActionType::ClickScreenElement { query } => {
+                ActionResult::failure(format!(
+                    "click screen '{}' requires ScreenAwareExecutor",
+                    query
+                ))
+            }
+            ActionType::TypeIntoScreenElement { query, .. } => {
+                ActionResult::failure(format!(
+                    "type into screen element '{}' requires ScreenAwareExecutor",
+                    query
+                ))
+            }
+            ActionType::ClickScreenText { text } => {
+                ActionResult::failure(format!(
+                    "click screen text '{}' requires ScreenAwareExecutor",
+                    text
+                ))
+            }
+            ActionType::DragScreenElements { from_query, to_query } => {
+                ActionResult::failure(format!(
+                    "drag '{}' -> '{}' requires ScreenAwareExecutor",
+                    from_query, to_query
+                ))
+            }
+            ActionType::SwipeScreenElements { from_query, to_query } => {
+                ActionResult::failure(format!(
+                    "swipe '{}' -> '{}' requires ScreenAwareExecutor",
+                    from_query, to_query
+                ))
             }
         }
     }

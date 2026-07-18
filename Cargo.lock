@@ -3517,8 +3517,10 @@ dependencies = [
  "async-trait",
  "chrono",
  "nova_ai",
+ "nova_input",
  "nova_kernel",
  "nova_memory",
+ "nova_screen",
  "nova_search",
  "parking_lot",
  "regex",
@@ -3570,6 +3572,7 @@ dependencies = [
  "nova_automation",
  "nova_comms",
  "nova_cross_device",
+ "nova_input",
  "nova_kernel",
  "nova_knowledge",
  "nova_memory",
@@ -3637,9 +3640,11 @@ version = "0.1.0"
 dependencies = [
  "nova_ai",
  "nova_comms",
+ "nova_input",
  "nova_kernel",
  "nova_memory",
  "nova_plugin_host",
+ "nova_screen",
  "nova_search",
  "nova_voice",
  "serde",
@@ -3650,11 +3655,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "nova_input"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "jni",
+ "nova_kernel",
+ "nova_security",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "uuid",
+ "windows 0.58.0",
+]
+
+[[package]]
 name = "nova_jni"
 version = "0.1.0"
 dependencies = [
  "jni",
  "nova_ffi",
+ "nova_input",
  "nova_screen",
 ]
 
@@ -3772,6 +3797,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "jni",
+ "nova_input",
  "nova_kernel",
  "parking_lot",
  "serde",

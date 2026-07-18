@@ -5,11 +5,13 @@
 
 use nova_ai::AIEngine;
 use nova_comms::DeviceComms;
+use nova_input::InputSystem;
 use nova_kernel::{
     get_config, get_recent_activity, get_recent_egress, update_config, Kernel, NovaConfig, Result,
 };
 use nova_memory::{MemoryEngine, MemoryRecord, Query};
 use nova_plugin_host::PluginHost;
+use nova_screen::ScreenSystem;
 use nova_search::UniversalSearch;
 use nova_voice::VoiceSystem;
 use std::ffi::{CStr, CString};
@@ -129,6 +131,12 @@ pub unsafe extern "C" fn nova_init(config_dir_c: *const c_char, log_dir_c: *cons
         kernel
             .registry
             .register(Arc::new(PluginHost::new(kernel.clone())))?;
+        let input = Arc::new(InputSystem::new());
+        input.set_event_bus(kernel.event_bus.clone());
+        kernel.registry.register(input)?;
+        kernel
+            .registry
+            .register(Arc::new(ScreenSystem::new(kernel.clone())))?;
 
         kernel.registry.bring_up().await?;
         Ok(())

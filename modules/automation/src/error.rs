@@ -16,6 +16,14 @@ pub enum AutomationError {
     MissingDependency(String),
     WorkflowDisabled(String),
     StepExecutionFailed { step: usize, reason: String },
+    ElementNotFound {
+        query: String,
+        suggestion: String,
+    },
+    StepTimeout {
+        step: usize,
+        timeout_ms: u64,
+    },
     Internal(String),
 }
 
@@ -44,6 +52,12 @@ impl std::fmt::Display for AutomationError {
             AutomationError::StepExecutionFailed { step, reason } => {
                 write!(f, "step {} failed: {}", step, reason)
             }
+            AutomationError::ElementNotFound { query, suggestion } => {
+                write!(f, "element '{}' not found on screen. {}", query, suggestion)
+            }
+            AutomationError::StepTimeout { step, timeout_ms } => {
+                write!(f, "step {} timed out after {}ms", step, timeout_ms)
+            }
             AutomationError::Internal(msg) => write!(f, "internal error: {}", msg),
         }
     }
@@ -68,6 +82,8 @@ impl From<AutomationError> for NovaError {
             AutomationError::MissingDependency(_) => ErrorCategory::Kernel,
             AutomationError::WorkflowDisabled(_) => ErrorCategory::Kernel,
             AutomationError::StepExecutionFailed { .. } => ErrorCategory::Inference,
+            AutomationError::ElementNotFound { .. } => ErrorCategory::Inference,
+            AutomationError::StepTimeout { .. } => ErrorCategory::Internal,
             AutomationError::Internal(_) => ErrorCategory::Internal,
         };
         NovaError::new(category, "ERR_AUTOMATION", &e.to_string())
@@ -111,9 +127,17 @@ mod tests {
                 step: 0,
                 reason: "a".into(),
             },
+            AutomationError::ElementNotFound {
+                query: "btn".into(),
+                suggestion: "try a different query".into(),
+            },
+            AutomationError::StepTimeout {
+                step: 0,
+                timeout_ms: 5000,
+            },
             AutomationError::Internal("a".into()),
         ];
-        assert_eq!(variants.len(), 15);
+        assert_eq!(variants.len(), 17);
         for v in &variants {
             let s = v.to_string();
             assert!(!s.is_empty());
