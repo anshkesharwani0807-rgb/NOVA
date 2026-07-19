@@ -1,5 +1,67 @@
 # CHANGELOG
 
+## [0.21.0-m21] - 2026-07-19 — Closed-Loop Autonomous Execution
+
+### Added (M21 Subsystem 4 — PlanExecutor)
+- **`plan_executor.rs`** — `PlanExecutor` with `execute_goal()` and `execute_plan()` methods;
+  `GoalExecutionReport`, `StepExecutionRecord`, `ExecutionSummary`, `PlanExecutorConfig`,
+  `PipelineExecutionState`, `StepStatus`, `ExecutionContext`.
+- **Execution loop** — precondition evaluation; action execution with thread-based timeout;
+  async verification integration via `OutcomeVerifier`; recovery retry loop via `RecoveryOrchestrator`;
+  cancellation support via `AtomicBool`.
+- **Validation** — plan validation at both `execute_goal()` and `execute_plan()` entry points.
+- **32 unit tests** — full pipeline, single-step, precondition skip, verification disabled,
+  recovery disabled, retry success, failure, cancellation, metrics, serialization.
+
+### Added (M21 Subsystem 3 — RecoveryOrchestrator)
+- **`recovery_orchestrator.rs`** — `RecoveryOrchestrator` with `decide()` implementing full decision
+  tree: classify failure → try retry (ExponentialBackoff/Fixed/NoRetry) → post-retry (skip optional/
+  replan on env change/escalate/abort).
+- **Types** — `RecoveryDecision` (Retry/Skip/Abort/Replan/Escalate), `RecoveryStrategy` (11 variants),
+  `RecoveryContext`, `RecoveryReport`, `RecoveryHistory` (with `record_attempt()`/`statistics()`/
+  `recent_attempts()`), `RecoveryStatistics`, `RecoveryConfig`.
+- **30+ unit tests** — all decision branches, retry counting, config toggle, history tracking,
+  serialization round-trip.
+
+### Added (M21 Subsystem 2 — OutcomeVerifier)
+- **`outcome_verifier.rs`** — `OutcomeVerifier` with async `verify()` dispatching to:
+  `verify_screen_contains()` (OCR), `verify_active_app_changed()`, `verify_device_state()`,
+  `verify_world_state_diff()` (snapshot comparison), `verify_no_verification()`.
+- **Types** — `VerificationResult` (Passed/Failed/Uncertain), `VerificationEvidence`
+  (pre/post snapshots, world diff), `WorldDiff` (7 change detectors).
+- **30+ unit tests** — all verification strategies, device telemetry matches/mismatches, OCR,
+  snapshot diffs, action failure handling.
+
+### Added (M21 Subsystem 1 — PipelineStep & ExecutionPlanAdapter)
+- **`pipeline_step.rs`** — `PipelineStep`, `PipelineStepStatus`, `Precondition` (6 variants),
+  `ExpectedOutcome` (5 variants), `VerificationStrategy` (6 variants), `RetryPolicy` (3 variants).
+  Functions: `verification_strategy_for_action()`, `expected_outcome_for_action()`,
+  `retry_policy_for_step()`.
+- **`execution_plan_adapter.rs`** — `ExecutionPlanAdapter` with `convert()`, `derive_preconditions()`,
+  `derive_expected_outcome()`, `derive_retry_policy()`. Precondition derivation for all action types
+  including device control (brightness/volume/wifi/bluetooth/dnd/lock/powersave/profile).
+- **22 unit tests** — all action types, precondition derivation, retry policy, conversion correctness.
+
+### Added (M21 Subsystem 5 — Events, Config & Observability)
+- **`events.rs`** — 19 new `AutomationEventPayload` variants: PipelineStarted/Completed/Failed/
+  Cancelled, StepStarted/Completed/Failed/Skipped/Retried, VerificationStarted/Completed/Failed,
+  RecoveryStarted/Completed/Failed, ReplanStarted/Completed, GoalExecutionStarted/Completed.
+- **`config.rs`** — 10 new `AutomationConfig` fields: `verification_timeout_ms`, `default_retry_policy`,
+  `max_pipeline_duration_ms`, `enable_metrics`, `enable_event_stream`, `enable_verification`,
+  `enable_recovery`, `enable_replanning`, `max_replans`, `metrics_retention`.
+- **`observability.rs`** — `ExecutionMetrics` (13 counters/durations, record_*(), reset(), snapshot(),
+  merge(), average_*), `SharedMetrics` (atomic concurrent version with `clone()` semantics),
+  `ExecutionTrace`, `PipelineTrace`, `StepTrace`, `VerificationTrace`, `RecoveryTrace`.
+- **30 unit tests** — metrics recording/reset/merge/snapshot/averages, shared metrics concurrent
+  access, trace creation and serialization.
+
+### Build
+- All new files wired into `nova_automation` `lib.rs` as `mod plan_executor`, `mod observability`.
+- `cargo check --workspace` — 0 errors, 0 warnings.
+- `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings.
+- `cargo fmt --all -- --check` — clean.
+- 62 new tests pass (32 plan_executor + 30 observability), plus pre-existing S1-S3 test suites.
+
 ## [0.20.0-m20] - 2026-07-18 — Autonomous Planning & World State (S1: Planner)
 
 ### Added (M20 Subsystem 1 — Planner)

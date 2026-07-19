@@ -14,6 +14,16 @@ pub struct AutomationConfig {
     pub enable_vision_triggers: bool,
     pub enable_memory_triggers: bool,
     pub enable_device_triggers: bool,
+    pub verification_timeout_ms: u64,
+    pub default_retry_policy: String,
+    pub max_pipeline_duration_ms: u64,
+    pub enable_metrics: bool,
+    pub enable_event_stream: bool,
+    pub enable_verification: bool,
+    pub enable_recovery: bool,
+    pub enable_replanning: bool,
+    pub max_replans: u32,
+    pub metrics_retention: usize,
 }
 
 impl Default for AutomationConfig {
@@ -31,6 +41,16 @@ impl Default for AutomationConfig {
             enable_vision_triggers: false,
             enable_memory_triggers: false,
             enable_device_triggers: false,
+            verification_timeout_ms: 10_000,
+            default_retry_policy: "exponential".into(),
+            max_pipeline_duration_ms: 300_000,
+            enable_metrics: true,
+            enable_event_stream: true,
+            enable_verification: true,
+            enable_recovery: true,
+            enable_replanning: true,
+            max_replans: 3,
+            metrics_retention: 1000,
         }
     }
 }

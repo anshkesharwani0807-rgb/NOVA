@@ -541,7 +541,69 @@ dependency graph) and the world state subsystem (live device environment model).
 
 ---
 
-## Future Phases (Post-v0.20.0)
+## Milestone 21 — Closed-Loop Autonomous Execution (COMPLETE ✅)
+
+**Objective:** Connect the Planner, World State, Execution Engine, ComputerController,
+nova_screen, and nova_input into a closed-loop autonomous execution pipeline that can
+accept a user goal, produce a context-aware plan, execute steps with screen-verified
+outcomes, and recover from failures adaptively.
+
+**Deliverables (Subsystem 1 — Pipeline Step & Plan Adapter):**
+- `pipeline_step.rs` — `PipelineStep`, `PipelineStepStatus`, `Precondition` (6 variants),
+  `ExpectedOutcome` (5 variants), `VerificationStrategy` (6 variants), `RetryPolicy` (3 variants),
+  `verification_strategy_for_action()`, `expected_outcome_for_action()`, `retry_policy_for_step()`
+- `execution_plan_adapter.rs` — `ExecutionPlanAdapter` with `convert()`, `derive_preconditions()`,
+  `derive_expected_outcome()`, `derive_retry_policy()`, precondition derivation for all action types
+
+**Deliverables (Subsystem 2 — Outcome Verifier):**
+- `outcome_verifier.rs` — `OutcomeVerifier` with async `verify()` dispatching to:
+  `verify_screen_contains()`, `verify_active_app_changed()`, `verify_device_state()`,
+  `verify_world_state_diff()`, `verify_no_verification()`
+- `VerificationResult` (Passed / Failed / Uncertain), `VerificationEvidence`, `WorldDiff`
+- Screen-engine-based OCR verification, device telemetry verification, snapshot comparison
+- 30+ unit tests across all verification strategies and edge cases
+
+**Deliverables (Subsystem 3 — Recovery Orchestrator):**
+- `recovery_orchestrator.rs` — `RecoveryOrchestrator` with `decide()` method implementing
+  decision tree: classify failure → try retry → post-retry (skip/escalate/abort/replan)
+- `RecoveryDecision` (Retry/Skip/Abort/Replan/Escalate), `RecoveryStrategy` (11 variants),
+  `RecoveryContext`, `RecoveryReport`, `RecoveryHistory`, `RecoveryStatistics`
+- Recursive retry with ExponentialBackoff / Fixed / NoRetry policies
+- 30+ unit tests covering all decision branches and edge cases
+
+**Deliverables (Subsystem 4 — Plan Executor):**
+- `plan_executor.rs` — `PlanExecutor` orchestrating: plan → precondition check → action execution
+  (thread-based timeout) → async verification → recovery retry loop → report generation
+- `GoalExecutionReport`, `StepExecutionRecord`, `ExecutionSummary`, `PlanExecutorConfig`,
+  `PipelineExecutionState`, `StepStatus`, `ExecutionContext`
+- Validation at `execute_goal()` and `execute_plan()` entry points
+- 32 unit tests covering: full pipeline, single-step, precondition skip, verification disabled,
+  recovery disabled, retry success, retry failure, cancellation, metrics, serialization
+
+**Deliverables (Subsystem 5 — Events, Configuration & Observability):**
+- `events.rs` extended: 19 new `AutomationEventPayload` variants (PipelineStarted/Completed/Failed/
+  Cancelled, StepStarted/Completed/Failed/Skipped/Retried, VerificationStarted/Completed/Failed,
+  RecoveryStarted/Completed/Failed, ReplanStarted/Completed, GoalExecutionStarted/Completed)
+- `config.rs` extended: 10 new `AutomationConfig` fields (verification_timeout_ms, default_retry_policy,
+  max_pipeline_duration_ms, enable_metrics, enable_event_stream, enable_verification,
+  enable_recovery, enable_replanning, max_replans, metrics_retention)
+- `observability.rs` — `ExecutionMetrics` (13 counters/durations, record_*, reset(), snapshot(),
+  merge(), average_*), `SharedMetrics` (atomic concurrent version), `ExecutionTrace`,
+  `PipelineTrace`, `StepTrace`, `VerificationTrace`, `RecoveryTrace`
+- 30 unit tests covering metrics recording/reset/merge/snapshot/averages, shared metrics
+  concurrent access, trace creation and serialization
+
+**Exit Criteria:**
+- ✅ `cargo test -p nova_automation` — all M21 tests pass (184 total: 62 new + 122 existing)
+- ✅ `cargo check --workspace` — 0 errors, 0 warnings
+- ✅ `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings
+- ✅ `cargo fmt --all -- --check` — clean
+- ✅ No M1-M20 regressions
+- ✅ No changes to frozen M17-M20 public APIs
+
+---
+
+## Future Phases (Post-v0.21.0)
 
 - **v3.x:** Proactive helpfulness (anticipation engine, LG-2)
 - **v4.x:** Linux + macOS shells (LG-3)

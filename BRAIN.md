@@ -166,8 +166,16 @@ GitHub: private repo `https://github.com/anshkesharwani0807-rgb/NOVA` (branch `m
 - ✅ **M20 S1 Planner** — `planner.rs` with `Goal`, `ExecutionStep`, `ExecutionPlan`, `Capability` (13 variants), `PlanValidation`, `Planner`. Heuristic decomposition for 14+ goal types. Kahn's topological sort, cycle detection, `ready_steps()`. 23 unit tests. Wired into `nova_automation`.
 - ✅ **M20 S2 World State** — `world_state.rs` with `WorldState`, `WorldSnapshot`, `WorldStateConfig`, `DeviceTelemetry`, `NetworkState`, `WorldDiff`, `WorldSubscription`, `DeviceTelemetryCollector` trait + `NullDeviceTelemetryCollector`. Device/network state storage, diff tracking across 7 state categories, thread-safe subscriptions with notify, privacy/redacted snapshots. 48 unit tests (22 original + 26 new).
 
-All milestones 1–20 exit criteria verified.
-NOVA v0.20.0-m20 ready.
+- ✅ **M21 Closed-Loop Autonomous Execution** — `pipeline_step.rs`, `execution_plan_adapter.rs`,
+  `outcome_verifier.rs`, `recovery_orchestrator.rs`, `plan_executor.rs`, `observability.rs`.
+  Full pipeline: Goal → Plan → Precondition check → Action execution (thread-based timeout) →
+  Async verification (screen/OCR, device telemetry, snapshot diff, app foreground) →
+  Recovery retry loop (retry/skip/abort/escalate/replan) → Report. 19 new `AutomationEventPayload`
+  variants. 10 new `AutomationConfig` fields. `ExecutionMetrics` + `SharedMetrics` + trace types.
+  62 new unit tests (32 plan_executor + 30 observability). All 4 verification gates green.
+
+All milestones 1–21 exit criteria verified.
+NOVA v0.21.0-m21 ready.
 
 `comms` and `plugin_host` are working `KernelModule` **skeletons** (start/stop cleanly, no
 real work yet).

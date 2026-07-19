@@ -125,11 +125,52 @@
 - [x] 23 unit tests across all patterns, graph ops, validation, configuration
 - [x] Wired into `nova_automation` `lib.rs` with `pub use planner::*`
 
-### M20 Subsystem 2 — World State (PENDING)
-- [ ] World state model (device state, app state, screen state, network state)
-- [ ] World state store with diff tracking and subscriptions
-- [ ] Integration with Planner for context-aware decomposition
-- [ ] Permissions and privacy filtering
+### M20 Subsystem 2 — World State (COMPLETE ✅)
+- [x] World state model (device state, app state, screen state, network state)
+- [x] World state store with diff tracking and subscriptions
+- [x] Integration with Planner for context-aware decomposition
+- [x] Permissions and privacy filtering
+
+---
+
+## Milestone 21 — Closed-Loop Autonomous Execution (COMPLETE ✅)
+
+### M21 Design (COMPLETE ✅)
+- [x] Design document written: `tasks/M21.md` — 14 sections, 5 subsystems
+- [x] PipelineStep types + adapter, OutcomeVerifier, RecoveryOrchestrator, PlanExecutor, Events+Config
+
+### M21 Subsystem 1 — PipelineStep & ExecutionPlanAdapter (COMPLETE ✅)
+- [x] `pipeline_step.rs` — PipelineStep, PipelineStepStatus, Precondition, VerificationStrategy, RetryPolicy, ExpectedOutcome + 11 tests
+- [x] `execution_plan_adapter.rs` — ExecutionPlanAdapter (convert, derive_preconditions, device_control_preconditions) + 11 tests
+- [x] Wired into `nova_automation` `lib.rs` with `pub use`
+- [x] Bug fix: TypeIntoScreenElement, DragScreenElements, SwipeScreenElements preconditions
+- [x] All verification gates green
+
+### M21 Subsystem 2 — OutcomeVerifier (COMPLETE ✅)
+- [x] `outcome_verifier.rs` — OutcomeVerifier with async verify() dispatching to 5 verification strategies
+- [x] Screen/OCR, AppForeground, DeviceTelemetry, CompareSnapshots, NoVerification
+- [x] 30+ unit tests covering all verification strategies and edge cases
+- [x] All verification gates green
+
+### M21 Subsystem 3 — RecoveryOrchestrator (COMPLETE ✅)
+- [x] `recovery_orchestrator.rs` — RecoveryOrchestrator with decide() implementing full decision tree
+- [x] RecoveryDecision (Retry/Skip/Abort/Replan/Escalate), RecoveryStrategy (11 variants), RecoveryHistory
+- [x] Retry with ExponentialBackoff/Fixed/NoRetry policies
+- [x] 30+ unit tests covering all decision branches
+- [x] All verification gates green
+
+### M21 Subsystem 4 — PlanExecutor (COMPLETE ✅)
+- [x] `plan_executor.rs` — PlanExecutor orchestrating: plan → precondition check → action execution (thread timeout) → async verification → recovery retry loop → report
+- [x] Validation at entry points, cancellation support, metrics tracking
+- [x] 32 unit tests covering full pipeline, single-step, precondition skip, verification disabled, recovery disabled, retry success/failure, cancellation, metrics
+- [x] All verification gates green
+
+### M21 Subsystem 5 — Events, Config & Observability (COMPLETE ✅)
+- [x] `events.rs` — 19 new AutomationEventPayload variants (PipelineStarted/Completed/Failed/Cancelled, StepStarted/Completed/Failed/Skipped/Retried, VerificationStarted/Completed/Failed, RecoveryStarted/Completed/Failed, ReplanStarted/Completed, GoalExecutionStarted/Completed)
+- [x] `config.rs` — 10 new fields: verification_timeout_ms, default_retry_policy, max_pipeline_duration_ms, enable_metrics, enable_event_stream, enable_verification, enable_recovery, enable_replanning, max_replans, metrics_retention
+- [x] `observability.rs` — ExecutionMetrics (13 counters/durations, record_*, reset(), snapshot(), merge(), average_*), SharedMetrics (atomic concurrent), trace types
+- [x] 30 unit tests covering metrics recording/reset/merge/snapshot/averages, shared metrics concurrent access, trace serialization
+- [x] All verification gates green
 
 ---
 

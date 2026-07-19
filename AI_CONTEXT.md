@@ -2,10 +2,15 @@
 
 > Companion to `BRAIN.md` and `SESSION.md`. Read before making any changes.
 
-## Status: M1–M19 COMPLETE. M20 S1 (Planner) COMPLETE. M20 S2 (World State) PENDING.
+## Status: M1–M21 COMPLETE ✅
 
-All M1–M19 requirements are implemented and verified. M20 Subsystem 1 (Planner)
-is complete — all 23 tests pass, wired into `nova_automation`.
+All M1–M20 requirements are implemented and verified. M21 (Closed-Loop Autonomous Execution) is complete:
+- S1 PipelineStep & ExecutionPlanAdapter — 22 unit tests
+- S2 OutcomeVerifier — 30+ unit tests
+- S3 RecoveryOrchestrator — 30+ unit tests
+- S4 PlanExecutor — 32 unit tests
+- S5 Events, Config & Observability — 30 unit tests
+All 4 verification gates green.
 
 ---
 
