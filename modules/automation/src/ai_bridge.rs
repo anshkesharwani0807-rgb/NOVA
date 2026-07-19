@@ -6,8 +6,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::execution_manager::{ExecutionManager, ExecutionPriority, ExecutionRequest};
 use crate::goal_registry::GoalRegistry;
+use crate::history::HistoryStore;
 use crate::intention_parser::IntentParser;
-use crate::planner::Planner;
+use crate::planner::{AiPlanResult, Planner};
+use crate::planning_context::PlanningContextBuilder;
+use crate::world_state::WorldState;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum AutomationIntent {
@@ -315,6 +318,8 @@ pub struct AIAutomationBridge {
     sessions: Arc<RwLock<HashMap<String, Arc<RwLock<AutomationSession>>>>>,
     config: Arc<RwLock<AutomationBridgeConfig>>,
     metrics: Arc<RwLock<AutomationMetrics>>,
+    world_state: Option<Arc<parking_lot::RwLock<WorldState>>>,
+    history_store: Option<Arc<dyn HistoryStore>>,
 }
 
 impl AIAutomationBridge {
@@ -334,7 +339,21 @@ impl AIAutomationBridge {
             sessions: Arc::new(RwLock::new(HashMap::new())),
             config: Arc::new(RwLock::new(AutomationBridgeConfig::default())),
             metrics: Arc::new(RwLock::new(AutomationMetrics::new())),
+            world_state: None,
+            history_store: None,
         }
+    }
+
+    /// Attach a world state reference for context-aware planning.
+    pub fn with_world_state(mut self, ws: Arc<parking_lot::RwLock<WorldState>>) -> Self {
+        self.world_state = Some(ws);
+        self
+    }
+
+    /// Attach a history store for execution history context.
+    pub fn with_history_store(mut self, h: Arc<dyn HistoryStore>) -> Self {
+        self.history_store = Some(h);
+        self
     }
 
     pub fn with_config(self, config: AutomationBridgeConfig) -> Self {
@@ -427,7 +446,7 @@ impl AIAutomationBridge {
             .planner_template
             .fill(&goal_match.matched_parameters);
 
-        let plan = match self.planner.plan(&goal) {
+        let mut plan = match self.planner.plan(&goal) {
             Ok(p) => p,
             Err(e) => {
                 self.metrics.write().record_failure();
@@ -436,6 +455,46 @@ impl AIAutomationBridge {
                 return Ok(response);
             }
         };
+
+        // If heuristic planner fell through to RunAI fallback, try AI planning.
+        if self.planner.is_runai_plan(&plan) && self.planner.has_ai() {
+            let mut builder = PlanningContextBuilder::new();
+            if let Some(ref ws) = self.world_state {
+                builder = builder.with_world_state(ws.clone());
+            }
+            if let Some(ref hs) = self.history_store {
+                builder = builder.with_history(hs.clone());
+            }
+            let ctx = builder.build(&goal);
+
+            match tokio::runtime::Handle::current()
+                .block_on(self.planner.plan_with_ai(&goal, Some(&ctx)))
+            {
+                Ok(AiPlanResult::Plan(ai_plan)) => {
+                    plan = ai_plan;
+                }
+                Ok(AiPlanResult::Clarification { question }) => {
+                    let response = AutomationResponse::success(
+                        AutomationDecision::Clarify {
+                            question,
+                            options: vec![],
+                        },
+                        "I need clarification to plan this goal",
+                    );
+                    self.update_session(session, text, response.clone());
+                    return Ok(response);
+                }
+                Ok(AiPlanResult::Failed { reason }) | Err(reason) => {
+                    self.metrics.write().record_failure();
+                    let response = AutomationResponse::error(format!(
+                        "Could not plan this goal: {}. Try rephrasing or being more specific.",
+                        reason
+                    ));
+                    self.update_session(session, text, response.clone());
+                    return Ok(response);
+                }
+            }
+        }
 
         let priority = request.priority.unwrap_or(ExecutionPriority::Normal);
         let exec_request =

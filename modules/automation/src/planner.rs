@@ -1,7 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+
+use async_trait::async_trait;
 
 use crate::action::{ActionType, DeviceControl};
+use crate::planning_context::PlanningContext;
 
 /// High-level user goal to be decomposed into an execution plan.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,11 +92,27 @@ pub struct PlanValidation {
     pub unreachable_steps: Vec<String>,
 }
 
+/// AI completion provider for planning.
+#[async_trait]
+pub trait AiProvider: Send + Sync {
+    async fn complete_structured(&self, system: &str, prompt: &str) -> Result<String, String>;
+}
+
+/// Result of AI-powered plan generation.
+#[derive(Debug)]
+pub enum AiPlanResult {
+    Plan(ExecutionPlan),
+    Clarification { question: String },
+    Failed { reason: String },
+}
+
 /// Decomposes high-level goals into executable execution plans.
 pub struct Planner {
     max_steps_per_plan: usize,
     default_step_timeout_ms: u64,
     default_retry_count: u32,
+    ai: Option<Arc<dyn AiProvider>>,
+    max_ai_retries: u32,
 }
 
 impl Planner {
@@ -101,7 +121,26 @@ impl Planner {
             max_steps_per_plan: 20,
             default_step_timeout_ms: 30_000,
             default_retry_count: 2,
+            ai: None,
+            max_ai_retries: 2,
         }
+    }
+
+    /// Attach an AI provider for novel goal decomposition.
+    pub fn with_ai(mut self, ai: Arc<dyn AiProvider>) -> Self {
+        self.ai = Some(ai);
+        self
+    }
+
+    /// Check whether an AI provider is configured.
+    pub fn has_ai(&self) -> bool {
+        self.ai.is_some()
+    }
+
+    /// Set the maximum number of AI retry attempts.
+    pub fn with_max_ai_retries(mut self, max: u32) -> Self {
+        self.max_ai_retries = max;
+        self
     }
 
     pub fn with_max_steps(mut self, max: usize) -> Self {
@@ -287,6 +326,363 @@ impl Planner {
                         .all(|dep| completed_set.contains(dep.as_str()))
             })
             .collect()
+    }
+
+    /// Check if a plan is the RunAI fallback (heuristic couldn't handle it).
+    pub fn is_runai_plan(&self, plan: &ExecutionPlan) -> bool {
+        plan.steps.len() == 1
+            && matches!(plan.steps[0].action, ActionType::RunAI { .. })
+            && plan.steps[0].required_capabilities == vec![Capability::AiInference]
+    }
+
+    /// Decompose a novel goal using the AI provider, optionally with execution context.
+    pub async fn plan_with_ai(
+        &self,
+        goal: &Goal,
+        ctx: Option<&PlanningContext>,
+    ) -> Result<AiPlanResult, String> {
+        let ai = self
+            .ai
+            .as_ref()
+            .ok_or_else(|| "no AI provider configured for planning".to_string())?;
+
+        let system = self.build_planning_prompt(ctx);
+        let goal_json = serde_json::json!({
+            "description": goal.description,
+            "context": goal.context,
+        })
+        .to_string();
+
+        let mut remaining = self.max_ai_retries;
+        let mut current_prompt = goal_json;
+
+        loop {
+            let raw = ai.complete_structured(&system, &current_prompt).await?;
+            let trimmed = raw.trim();
+
+            if let Some(q) = self.extract_clarification(trimmed) {
+                return Ok(AiPlanResult::Clarification { question: q });
+            }
+
+            match self.parse_ai_plan(trimmed) {
+                Ok(plan) => {
+                    let validation = self.validate(&plan);
+                    if validation.is_valid {
+                        return Ok(AiPlanResult::Plan(plan));
+                    } else if remaining > 0 {
+                        let errs = validation.errors.join("; ");
+                        current_prompt = format!(
+                            "The plan has validation errors: {}. Please fix them and return a corrected plan.",
+                            errs
+                        );
+                        remaining -= 1;
+                    } else {
+                        return Ok(AiPlanResult::Failed {
+                            reason: format!(
+                                "plan validation failed after retries: {}",
+                                validation.errors.join("; ")
+                            ),
+                        });
+                    }
+                }
+                Err(errors) => {
+                    if remaining > 0 {
+                        let errs = errors.join("; ");
+                        current_prompt = format!(
+                            "Parsing failed: {}. Return only valid JSON matching the ExecutionPlan schema.",
+                            errs
+                        );
+                        remaining -= 1;
+                    } else {
+                        return Ok(AiPlanResult::Failed {
+                            reason: format!(
+                                "could not parse AI response into a valid plan: {}",
+                                errors.join("; ")
+                            ),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    /// Extract a clarification question from an AI response if present.
+    fn extract_clarification(&self, response: &str) -> Option<String> {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(response) {
+            if let Some(obj) = v.as_object() {
+                if let Some(q) = obj.get("clarification").and_then(|c| c.as_str()) {
+                    return Some(q.to_string());
+                }
+            }
+        }
+        // Also check for a "needs_clarification" boolean.
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(response) {
+            if let Some(obj) = v.as_object() {
+                if obj.get("needs_clarification").and_then(|c| c.as_bool()) == Some(true) {
+                    return obj
+                        .get("clarification_question")
+                        .and_then(|c| c.as_str())
+                        .map(|s| s.to_string());
+                }
+            }
+        }
+        None
+    }
+
+    /// Build the system prompt describing available actions and schema.
+    /// Optionally includes rich context from PlanningContext.
+    pub fn build_planning_prompt(&self, ctx: Option<&PlanningContext>) -> String {
+        let mut prompt = String::with_capacity(2048);
+
+        prompt.push_str("You are an AI planning assistant that decomposes user goals into executable step sequences.\n\n");
+        prompt.push_str("## Available Action Types\n");
+        prompt.push_str(&action_type_descriptions());
+        prompt.push_str("\n## Available Capabilities\n");
+        prompt.push_str(&capability_descriptions());
+        prompt.push_str("\n## Step Schema\n");
+        prompt.push_str(&step_schema());
+        prompt.push_str("\n## Validation Rules\n");
+        prompt.push_str("- Return valid JSON matching the schema exactly\n");
+        prompt.push_str("- Use only the ActionType and Capability values listed above\n");
+        prompt.push_str("- Step IDs must be unique, sequential (\"s1\", \"s2\", ...)\n");
+        prompt.push_str("- Dependencies must reference existing step IDs\n");
+        prompt.push_str("- No circular dependencies\n");
+        prompt.push_str("- Each step must have a clear, actionable description\n");
+        prompt.push_str("- Maximum 20 steps per plan\n");
+
+        // Add context if available.
+        if let Some(ctx) = ctx {
+            prompt.push_str("\n## Current Context\n");
+            if let Some(ref app) = ctx.active_app {
+                prompt.push_str(&format!("- Active application: {}\n", app));
+            }
+            if let Some(ref telemetry) = ctx.device_telemetry {
+                prompt.push_str(&format!(
+                    "- Device: battery={}%, wifi={}, bluetooth={}\n",
+                    telemetry
+                        .battery_level
+                        .map_or("unknown".into(), |v| v.to_string()),
+                    telemetry
+                        .wifi_enabled
+                        .map_or("unknown", |v| if v { "on" } else { "off" }),
+                    telemetry
+                        .bluetooth_enabled
+                        .map_or("unknown", |v| if v { "on" } else { "off" }),
+                ));
+            }
+            if let Some(ref net) = ctx.network_state {
+                prompt.push_str(&format!(
+                    "- Network: online={}, type={}\n",
+                    net.is_online
+                        .map_or("unknown", |v| if v { "yes" } else { "no" }),
+                    net.network_type.as_deref().unwrap_or("unknown"),
+                ));
+            }
+            if let Some(ref screen) = ctx.screen_summary {
+                if !screen.is_empty() {
+                    prompt.push_str(&format!("- Screen: {}\n", screen));
+                }
+            }
+            if let Some(ref hist) = ctx.execution_history {
+                prompt.push_str("- Recent execution history:\n");
+                if !hist.recent_successes.is_empty() {
+                    prompt.push_str(&format!(
+                        "  - Recent successes: {}\n",
+                        hist.recent_successes.join(", ")
+                    ));
+                }
+                if !hist.recent_failures.is_empty() {
+                    prompt.push_str(&format!(
+                        "  - Recent failures: {}\n",
+                        hist.recent_failures.join(", ")
+                    ));
+                }
+                if !hist.frequent_actions.is_empty() {
+                    prompt.push_str(&format!(
+                        "  - Frequent actions: {}\n",
+                        hist.frequent_actions.join(", ")
+                    ));
+                }
+                if !hist.recent_apps.is_empty() {
+                    prompt.push_str(&format!(
+                        "  - Recent apps: {}\n",
+                        hist.recent_apps.join(", ")
+                    ));
+                }
+            }
+            let filtered =
+                crate::planning_context::CapabilityFilter::filter_capabilities_for_context(ctx);
+            prompt.push_str(&format!(
+                "- Available capabilities: {}\n",
+                filtered
+                    .iter()
+                    .map(|c| format!("{:?}", c))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+
+        prompt.push_str("\n## Examples\n");
+        prompt.push_str(r#"Example 1: {"steps":[{"id":"s1","description":"open calculator app","action":{"OpenApp":{"app_id":"calculator","data":null}},"dependencies":[],"required_capabilities":["AutomationWorkflow"],"timeout_ms":30000,"retry_count":2,"continue_on_failure":false}]}"#);
+        prompt.push_str("\n\n");
+        prompt.push_str(r#"Example 2: {"steps":[{"id":"s1","description":"search for documents","action":{"SearchMemory":{"query":"documents","max_results":10}},"dependencies":[],"required_capabilities":["MemoryQuery"],"timeout_ms":30000,"retry_count":2,"continue_on_failure":false}]}"#);
+
+        prompt.push_str("\n\n## Output Format\n");
+        prompt.push_str("Return a JSON object with one of two forms:\n");
+        prompt.push_str("1. A plan: {\"steps\": [...]}\n");
+        prompt.push_str("2. A clarification: {\"needs_clarification\": true, \"clarification_question\": \"...\"}\n");
+
+        prompt
+    }
+
+    /// Parse an AI response string into an ExecutionPlan.
+    pub fn parse_ai_plan(&self, json: &str) -> Result<ExecutionPlan, Vec<String>> {
+        let mut errors = Vec::new();
+
+        let value: serde_json::Value = match serde_json::from_str(json) {
+            Ok(v) => v,
+            Err(e) => {
+                errors.push(format!("invalid JSON: {}", e));
+                return Err(errors);
+            }
+        };
+
+        let obj = match value.as_object() {
+            Some(o) => o,
+            None => {
+                errors.push("response is not a JSON object".to_string());
+                return Err(errors);
+            }
+        };
+
+        let steps_val = match obj.get("steps") {
+            Some(v) => v,
+            None => {
+                errors.push("missing 'steps' array in response".to_string());
+                return Err(errors);
+            }
+        };
+
+        let steps_arr = match steps_val.as_array() {
+            Some(a) => a,
+            None => {
+                errors.push("'steps' is not an array".to_string());
+                return Err(errors);
+            }
+        };
+
+        if steps_arr.is_empty() {
+            errors.push("plan has zero steps".to_string());
+            return Err(errors);
+        }
+
+        let mut steps = Vec::with_capacity(steps_arr.len());
+        let mut seen_ids = HashSet::new();
+
+        for (i, step_val) in steps_arr.iter().enumerate() {
+            let step_obj = match step_val.as_object() {
+                Some(o) => o,
+                None => {
+                    errors.push(format!("step {} is not a JSON object", i));
+                    continue;
+                }
+            };
+
+            let id = match step_obj.get("id").and_then(|v| v.as_str()) {
+                Some(id) => id.to_string(),
+                None => {
+                    errors.push(format!("step {} missing 'id' field", i));
+                    continue;
+                }
+            };
+
+            if !seen_ids.insert(id.clone()) {
+                errors.push(format!("duplicate step id '{}'", id));
+                continue;
+            }
+
+            let description = match step_obj.get("description").and_then(|v| v.as_str()) {
+                Some(d) => d.to_string(),
+                None => {
+                    errors.push(format!("step '{}' missing 'description'", id));
+                    continue;
+                }
+            };
+
+            let action = match step_obj.get("action") {
+                Some(a) => match serde_json::from_value::<ActionType>(a.clone()) {
+                    Ok(act) => act,
+                    Err(e) => {
+                        errors.push(format!("step '{}' invalid action: {}", id, e));
+                        continue;
+                    }
+                },
+                None => {
+                    errors.push(format!("step '{}' missing 'action'", id));
+                    continue;
+                }
+            };
+
+            let dependencies: Vec<String> = step_obj
+                .get("dependencies")
+                .and_then(|v| serde_json::from_value(v.clone()).ok())
+                .unwrap_or_default();
+
+            let required_capabilities: Vec<Capability> = step_obj
+                .get("required_capabilities")
+                .and_then(|v| serde_json::from_value(v.clone()).ok())
+                .unwrap_or_default();
+
+            let timeout_ms = step_obj
+                .get("timeout_ms")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(self.default_step_timeout_ms);
+
+            let retry_count = step_obj
+                .get("retry_count")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(self.default_retry_count as u64) as u32;
+
+            let continue_on_failure = step_obj
+                .get("continue_on_failure")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+
+            steps.push(ExecutionStep {
+                id,
+                description,
+                action,
+                dependencies,
+                required_capabilities,
+                timeout_ms,
+                retry_count,
+                continue_on_failure,
+            });
+        }
+
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        let step_count = steps.len();
+
+        if step_count > self.max_steps_per_plan {
+            errors.push(format!(
+                "plan has {} steps, exceeding maximum of {}",
+                step_count, self.max_steps_per_plan
+            ));
+            return Err(errors);
+        }
+
+        let plan = ExecutionPlan {
+            id: uuid::Uuid::new_v4().to_string(),
+            goal_description: String::new(),
+            steps,
+            created_at: chrono::Utc::now().timestamp_millis(),
+            estimated_steps: step_count,
+        };
+
+        Ok(plan)
     }
 
     /// Create a default step with standard settings.
@@ -659,9 +1055,125 @@ fn extract_after<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
     }
 }
 
+fn action_type_descriptions() -> String {
+    use std::fmt::Write;
+    let mut s = String::with_capacity(1024);
+    writeln!(s, "- Speak: Speak text aloud").ok();
+    writeln!(
+        s,
+        "- Notify: Show a notification with title, body, priority"
+    )
+    .ok();
+    writeln!(s, "- OpenApp: Open an application by app_id").ok();
+    writeln!(s, "- LaunchActivity: Launch a specific activity in an app").ok();
+    writeln!(s, "- Clipboard: Copy/paste/clear clipboard").ok();
+    writeln!(
+        s,
+        "- CreateMemory: Store a memory with title, content, category, tags, importance"
+    )
+    .ok();
+    writeln!(s, "- SearchMemory: Search stored memories by query").ok();
+    writeln!(s, "- RunAI: Run an AI inference with a prompt").ok();
+    writeln!(s, "- CaptureVoice: Capture voice audio for a duration").ok();
+    writeln!(s, "- AnalyzeImage: Analyze an image at a path").ok();
+    writeln!(s, "- DeviceControl: Control device settings (brightness, volume, wifi, bluetooth, dnd, lock, power)").ok();
+    writeln!(
+        s,
+        "- PluginInvocation: Invoke a plugin by plugin_id and method"
+    )
+    .ok();
+    writeln!(s, "- Wait: Wait for a duration in milliseconds").ok();
+    writeln!(s, "- SubWorkflow: Execute a sub-workflow by workflow_id").ok();
+    writeln!(
+        s,
+        "- InputInjection: Inject input events (click, type, key, scroll, etc.)"
+    )
+    .ok();
+    writeln!(
+        s,
+        "- ClickScreenElement: Click a screen element matching a query"
+    )
+    .ok();
+    writeln!(
+        s,
+        "- TypeIntoScreenElement: Type text into a screen element"
+    )
+    .ok();
+    writeln!(s, "- ClickScreenText: Click on screen text").ok();
+    writeln!(s, "- DragScreenElements: Drag from one element to another").ok();
+    writeln!(s, "- SwipeScreenElements: Swipe across screen elements").ok();
+    s
+}
+
+fn capability_descriptions() -> String {
+    use std::fmt::Write;
+    let mut s = String::with_capacity(512);
+    writeln!(s, "- ScreenCapture: Capture screen frames").ok();
+    writeln!(s, "- ScreenGrounding: Ground UI element coordinates").ok();
+    writeln!(s, "- Ocr: Optical character recognition").ok();
+    writeln!(s, "- InputMouse: Mouse input simulation").ok();
+    writeln!(s, "- InputKeyboard: Keyboard input simulation").ok();
+    writeln!(s, "- InputTouch: Touch input simulation").ok();
+    writeln!(s, "- AutomationWorkflow: Run automation workflows").ok();
+    writeln!(s, "- MemoryQuery: Query stored memories").ok();
+    writeln!(s, "- MemoryStore: Store new memories").ok();
+    writeln!(s, "- PluginInvocation: Invoke external plugins").ok();
+    writeln!(s, "- AiInference: Run AI inference").ok();
+    writeln!(s, "- VoiceCapture: Capture voice input").ok();
+    writeln!(s, "- DeviceControl: Control device hardware settings").ok();
+    s
+}
+
+fn step_schema() -> String {
+    r#"{
+  "id": "string (unique, sequential like 's1', 's2')",
+  "description": "string (concrete, actionable description)",
+  "action": { "ActionTypeName": { "param1": "value1", ... } },
+  "dependencies": ["step_id", ...],
+  "required_capabilities": ["CapabilityName", ...],
+  "timeout_ms": 30000,
+  "retry_count": 2,
+  "continue_on_failure": false
+}"#
+    .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[allow(dead_code)]
+    pub(crate) struct MockAiProvider {
+        response: std::sync::Mutex<Result<String, String>>,
+        call_count: std::sync::atomic::AtomicU32,
+    }
+
+    #[allow(dead_code)]
+    impl MockAiProvider {
+        pub(crate) fn new(response: Result<String, String>) -> Self {
+            Self {
+                response: std::sync::Mutex::new(response),
+                call_count: std::sync::atomic::AtomicU32::new(0),
+            }
+        }
+
+        pub(crate) fn call_count(&self) -> u32 {
+            self.call_count.load(std::sync::atomic::Ordering::Relaxed)
+        }
+    }
+
+    #[async_trait]
+    impl AiProvider for MockAiProvider {
+        async fn complete_structured(
+            &self,
+            _system: &str,
+            _prompt: &str,
+        ) -> Result<String, String> {
+            self.call_count
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.response.lock().unwrap().clone()
+        }
+    }
 
     #[test]
     fn test_planner_creates_plan_for_open_app() {
@@ -1125,5 +1637,252 @@ mod tests {
         // s3 must be after both s1 and s2.
         assert!(pos("s3") > pos("s1"));
         assert!(pos("s3") > pos("s2"));
+    }
+
+    #[test]
+    fn test_is_runai_fallback_true() {
+        let planner = Planner::new();
+        let steps = vec![ExecutionStep {
+            id: "s1".into(),
+            description: "ai fallback".into(),
+            action: ActionType::RunAI {
+                prompt: "test".into(),
+                session_id: None,
+            },
+            dependencies: vec![],
+            required_capabilities: vec![Capability::AiInference],
+            timeout_ms: 30000,
+            retry_count: 2,
+            continue_on_failure: false,
+        }];
+        let plan = ExecutionPlan {
+            id: "test".into(),
+            goal_description: "test".into(),
+            steps,
+            created_at: 0,
+            estimated_steps: 1,
+        };
+        assert!(planner.is_runai_plan(&plan));
+    }
+
+    #[test]
+    fn test_is_runai_fallback_false_heuristic() {
+        let planner = Planner::new();
+        let goal = Goal::new("open calculator");
+        let plan = planner.plan(&goal).unwrap();
+        assert!(!planner.is_runai_plan(&plan));
+    }
+
+    #[test]
+    fn test_is_runai_fallback_false_multistep() {
+        let planner = Planner::new();
+        let steps = vec![
+            ExecutionStep {
+                id: "s1".into(),
+                description: "first".into(),
+                action: ActionType::Wait { duration_ms: 100 },
+                dependencies: vec![],
+                required_capabilities: vec![],
+                timeout_ms: 1000,
+                retry_count: 0,
+                continue_on_failure: false,
+            },
+            ExecutionStep {
+                id: "s2".into(),
+                description: "run ai".into(),
+                action: ActionType::RunAI {
+                    prompt: "test".into(),
+                    session_id: None,
+                },
+                dependencies: vec![],
+                required_capabilities: vec![Capability::AiInference],
+                timeout_ms: 1000,
+                retry_count: 0,
+                continue_on_failure: false,
+            },
+        ];
+        let plan = ExecutionPlan {
+            id: "test".into(),
+            goal_description: "test".into(),
+            steps,
+            created_at: 0,
+            estimated_steps: 2,
+        };
+        // Multi-step plan with RunAI should NOT be considered fallback.
+        assert!(!planner.is_runai_plan(&plan));
+    }
+
+    #[test]
+    fn test_build_planning_prompt_contains_action_types() {
+        let planner = Planner::new();
+        let prompt = planner.build_planning_prompt(None);
+        assert!(prompt.contains("Speak"));
+        assert!(prompt.contains("OpenApp"));
+        assert!(prompt.contains("DeviceControl"));
+    }
+
+    #[test]
+    fn test_build_planning_prompt_contains_capabilities() {
+        let planner = Planner::new();
+        let prompt = planner.build_planning_prompt(None);
+        assert!(prompt.contains("ScreenCapture"));
+        assert!(prompt.contains("InputKeyboard"));
+        assert!(prompt.contains("AiInference"));
+    }
+
+    #[test]
+    fn test_build_planning_prompt_contains_schema() {
+        let planner = Planner::new();
+        let prompt = planner.build_planning_prompt(None);
+        assert!(prompt.contains("id"));
+        assert!(prompt.contains("action"));
+        assert!(prompt.contains("dependencies"));
+    }
+
+    #[test]
+    fn test_parse_ai_plan_valid() {
+        let planner = Planner::new();
+        let json = r#"{"steps":[{"id":"s1","description":"open calculator","action":{"OpenApp":{"app_id":"calculator","data":null}},"dependencies":[],"required_capabilities":["AutomationWorkflow"],"timeout_ms":30000,"retry_count":2,"continue_on_failure":false}]}"#;
+        let result = planner.parse_ai_plan(json);
+        assert!(result.is_ok());
+        let plan = result.unwrap();
+        assert_eq!(plan.steps.len(), 1);
+        assert_eq!(plan.steps[0].id, "s1");
+    }
+
+    #[test]
+    fn test_parse_ai_plan_invalid_json() {
+        let planner = Planner::new();
+        let result = planner.parse_ai_plan("not valid json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_ai_plan_missing_steps() {
+        let planner = Planner::new();
+        let result = planner.parse_ai_plan(r#"{"foo":"bar"}"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_ai_plan_duplicate_step_ids() {
+        let planner = Planner::new();
+        let json = r#"{"steps":[
+            {"id":"s1","description":"first","action":{"Wait":{"duration_ms":100}},"dependencies":[],"required_capabilities":[]},
+            {"id":"s1","description":"duplicate","action":{"Wait":{"duration_ms":100}},"dependencies":[],"required_capabilities":[]}
+        ]}"#;
+        let result = planner.parse_ai_plan(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_ai_plan_empty_steps() {
+        let planner = Planner::new();
+        let json = r#"{"steps":[]}"#;
+        let result = planner.parse_ai_plan(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_planner_with_ai_constructs() {
+        let mock = Arc::new(MockAiProvider::new(Ok("{\"steps\":[]}".into())));
+        let planner = Planner::new().with_ai(mock);
+        assert!(planner.has_ai());
+    }
+
+    #[test]
+    fn test_plan_unchanged_without_ai() {
+        let planner = Planner::new();
+        assert!(!planner.has_ai());
+        let goal = Goal::new("open calculator");
+        let plan = planner.plan(&goal).unwrap();
+        assert!(matches!(plan.steps[0].action, ActionType::OpenApp { .. }));
+    }
+
+    #[test]
+    fn test_plan_with_ai_success() {
+        let json = r#"{"steps":[{"id":"s1","description":"custom action","action":{"Wait":{"duration_ms":100}},"dependencies":[],"required_capabilities":[],"timeout_ms":1000,"retry_count":0,"continue_on_failure":false}]}"#;
+        let mock = Arc::new(MockAiProvider::new(Ok(json.to_string())));
+        let planner = Planner::new().with_ai(mock);
+        let goal = Goal::new("do something novel");
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(planner.plan_with_ai(&goal, None));
+        match result {
+            Ok(AiPlanResult::Plan(p)) => {
+                assert_eq!(p.steps.len(), 1);
+                assert_eq!(p.steps[0].description, "custom action");
+            }
+            _ => panic!("expected Plan variant"),
+        }
+    }
+
+    #[test]
+    fn test_plan_with_ai_clarification() {
+        let json =
+            r#"{"needs_clarification":true,"clarification_question":"What app should I open?"}"#;
+        let mock = Arc::new(MockAiProvider::new(Ok(json.to_string())));
+        let planner = Planner::new().with_ai(mock);
+        let goal = Goal::new("open something");
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(planner.plan_with_ai(&goal, None));
+        match result {
+            Ok(AiPlanResult::Clarification { question }) => {
+                assert_eq!(question, "What app should I open?");
+            }
+            _ => panic!("expected Clarification variant"),
+        }
+    }
+
+    #[test]
+    fn test_plan_with_ai_engine_unavailable() {
+        let planner = Planner::new();
+        let goal = Goal::new("do something");
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(planner.plan_with_ai(&goal, None));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("no AI provider configured"));
+    }
+
+    #[test]
+    fn test_plan_with_ai_context_included() {
+        let json = r#"{"steps":[{"id":"s1","description":"process in /home/docs","action":{"SearchMemory":{"query":"files","max_results":10}},"dependencies":[],"required_capabilities":["MemoryQuery"],"timeout_ms":30000,"retry_count":2,"continue_on_failure":false}]}"#;
+        let mock = Arc::new(MockAiProvider::new(Ok(json.to_string())));
+        let planner = Planner::new().with_ai(mock);
+        let goal = Goal::new("find files").with_context("location", "/home/docs");
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(planner.plan_with_ai(&goal, None));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_extract_clarification_detected() {
+        let planner = Planner::new();
+        let response = r#"{"needs_clarification":true,"clarification_question":"Which app?"}"#;
+        let q = planner.extract_clarification(response);
+        assert_eq!(q, Some("Which app?".to_string()));
+    }
+
+    #[test]
+    fn test_extract_clarification_not_present() {
+        let planner = Planner::new();
+        let response = r#"{"steps":[]}"#;
+        let q = planner.extract_clarification(response);
+        assert_eq!(q, None);
+    }
+
+    #[test]
+    fn test_build_planning_prompt_with_context() {
+        use crate::planning_context::PlanningContextBuilder;
+
+        let planner = Planner::new();
+        let goal = Goal::new("test");
+        let ctx = PlanningContextBuilder::new().build(&goal);
+        let prompt = planner.build_planning_prompt(Some(&ctx));
+        assert!(prompt.contains("Current Context"));
+        assert!(prompt.contains("Available capabilities"));
     }
 }

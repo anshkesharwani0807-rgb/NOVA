@@ -166,6 +166,111 @@ pub enum AutomationEventPayload {
         success: bool,
         duration_ms: i64,
     },
+    // S5 — Runtime lifecycle events
+    RuntimeStarted {
+        started_at: i64,
+    },
+    RuntimeStopped {
+        stopped_at: i64,
+        reason: String,
+    },
+    SessionCreated {
+        session_id: String,
+        goal: String,
+    },
+    SessionStarted {
+        session_id: String,
+        goal: String,
+    },
+    SessionPaused {
+        session_id: String,
+    },
+    SessionResumed {
+        session_id: String,
+    },
+    SessionCompleted {
+        session_id: String,
+        goal: String,
+        duration_ms: i64,
+    },
+    SessionFailed {
+        session_id: String,
+        goal: String,
+        error: String,
+    },
+    SessionCancelled {
+        session_id: String,
+        goal: String,
+    },
+    SessionTimedOut {
+        session_id: String,
+        goal: String,
+    },
+    ResourceAcquired {
+        session_id: String,
+        resource: String,
+        access_mode: String,
+    },
+    ResourceReleased {
+        session_id: String,
+        resource: String,
+    },
+    SchedulerStarted {
+        interval_ms: u64,
+    },
+    SchedulerStopped {
+        reason: String,
+    },
+}
+
+impl AutomationEventPayload {
+    pub fn variant_name(&self) -> &'static str {
+        match self {
+            AutomationEventPayload::WorkflowCreated { .. } => "WorkflowCreated",
+            AutomationEventPayload::WorkflowUpdated { .. } => "WorkflowUpdated",
+            AutomationEventPayload::WorkflowDeleted { .. } => "WorkflowDeleted",
+            AutomationEventPayload::WorkflowStarted { .. } => "WorkflowStarted",
+            AutomationEventPayload::WorkflowCompleted { .. } => "WorkflowCompleted",
+            AutomationEventPayload::WorkflowFailed { .. } => "WorkflowFailed",
+            AutomationEventPayload::TriggerActivated { .. } => "TriggerActivated",
+            AutomationEventPayload::ActionExecuted { .. } => "ActionExecuted",
+            AutomationEventPayload::ConditionMatched { .. } => "ConditionMatched",
+            AutomationEventPayload::AutomationError { .. } => "AutomationError",
+            AutomationEventPayload::PipelineStarted { .. } => "PipelineStarted",
+            AutomationEventPayload::PipelineCompleted { .. } => "PipelineCompleted",
+            AutomationEventPayload::PipelineFailed { .. } => "PipelineFailed",
+            AutomationEventPayload::PipelineCancelled { .. } => "PipelineCancelled",
+            AutomationEventPayload::StepStarted { .. } => "StepStarted",
+            AutomationEventPayload::StepCompleted { .. } => "StepCompleted",
+            AutomationEventPayload::StepFailed { .. } => "StepFailed",
+            AutomationEventPayload::StepSkipped { .. } => "StepSkipped",
+            AutomationEventPayload::StepRetried { .. } => "StepRetried",
+            AutomationEventPayload::VerificationStarted { .. } => "VerificationStarted",
+            AutomationEventPayload::VerificationCompleted { .. } => "VerificationCompleted",
+            AutomationEventPayload::VerificationFailed { .. } => "VerificationFailed",
+            AutomationEventPayload::RecoveryStarted { .. } => "RecoveryStarted",
+            AutomationEventPayload::RecoveryCompleted { .. } => "RecoveryCompleted",
+            AutomationEventPayload::RecoveryFailed { .. } => "RecoveryFailed",
+            AutomationEventPayload::ReplanStarted { .. } => "ReplanStarted",
+            AutomationEventPayload::ReplanCompleted { .. } => "ReplanCompleted",
+            AutomationEventPayload::GoalExecutionStarted { .. } => "GoalExecutionStarted",
+            AutomationEventPayload::GoalExecutionCompleted { .. } => "GoalExecutionCompleted",
+            AutomationEventPayload::RuntimeStarted { .. } => "RuntimeStarted",
+            AutomationEventPayload::RuntimeStopped { .. } => "RuntimeStopped",
+            AutomationEventPayload::SessionCreated { .. } => "SessionCreated",
+            AutomationEventPayload::SessionStarted { .. } => "SessionStarted",
+            AutomationEventPayload::SessionPaused { .. } => "SessionPaused",
+            AutomationEventPayload::SessionResumed { .. } => "SessionResumed",
+            AutomationEventPayload::SessionCompleted { .. } => "SessionCompleted",
+            AutomationEventPayload::SessionFailed { .. } => "SessionFailed",
+            AutomationEventPayload::SessionCancelled { .. } => "SessionCancelled",
+            AutomationEventPayload::SessionTimedOut { .. } => "SessionTimedOut",
+            AutomationEventPayload::ResourceAcquired { .. } => "ResourceAcquired",
+            AutomationEventPayload::ResourceReleased { .. } => "ResourceReleased",
+            AutomationEventPayload::SchedulerStarted { .. } => "SchedulerStarted",
+            AutomationEventPayload::SchedulerStopped { .. } => "SchedulerStopped",
+        }
+    }
 }
 
 #[cfg(test)]
@@ -206,6 +311,31 @@ mod tests {
             }
             _ => panic!("wrong variant"),
         }
+    }
+
+    #[test]
+    fn test_variant_name() {
+        assert_eq!(
+            AutomationEventPayload::RuntimeStarted { started_at: 0 }.variant_name(),
+            "RuntimeStarted"
+        );
+        assert_eq!(
+            AutomationEventPayload::SessionCreated {
+                session_id: "".into(),
+                goal: "".into()
+            }
+            .variant_name(),
+            "SessionCreated"
+        );
+        assert_eq!(
+            AutomationEventPayload::ResourceAcquired {
+                session_id: "".into(),
+                resource: "".into(),
+                access_mode: "".into()
+            }
+            .variant_name(),
+            "ResourceAcquired"
+        );
     }
 
     #[test]
@@ -375,7 +505,55 @@ mod tests {
                 success: true,
                 duration_ms: 0,
             },
+            AutomationEventPayload::RuntimeStarted { started_at: 0 },
+            AutomationEventPayload::RuntimeStopped {
+                stopped_at: 0,
+                reason: "".into(),
+            },
+            AutomationEventPayload::SessionCreated {
+                session_id: "".into(),
+                goal: "".into(),
+            },
+            AutomationEventPayload::SessionStarted {
+                session_id: "".into(),
+                goal: "".into(),
+            },
+            AutomationEventPayload::SessionPaused {
+                session_id: "".into(),
+            },
+            AutomationEventPayload::SessionResumed {
+                session_id: "".into(),
+            },
+            AutomationEventPayload::SessionCompleted {
+                session_id: "".into(),
+                goal: "".into(),
+                duration_ms: 0,
+            },
+            AutomationEventPayload::SessionFailed {
+                session_id: "".into(),
+                goal: "".into(),
+                error: "".into(),
+            },
+            AutomationEventPayload::SessionCancelled {
+                session_id: "".into(),
+                goal: "".into(),
+            },
+            AutomationEventPayload::SessionTimedOut {
+                session_id: "".into(),
+                goal: "".into(),
+            },
+            AutomationEventPayload::ResourceAcquired {
+                session_id: "".into(),
+                resource: "".into(),
+                access_mode: "".into(),
+            },
+            AutomationEventPayload::ResourceReleased {
+                session_id: "".into(),
+                resource: "".into(),
+            },
+            AutomationEventPayload::SchedulerStarted { interval_ms: 0 },
+            AutomationEventPayload::SchedulerStopped { reason: "".into() },
         ];
-        assert_eq!(variants.len(), 29);
+        assert_eq!(variants.len(), 43);
     }
 }
