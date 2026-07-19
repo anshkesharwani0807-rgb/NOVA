@@ -603,7 +603,53 @@ outcomes, and recover from failures adaptively.
 
 ---
 
-## Future Phases (Post-v0.21.0)
+## Milestone 22 — Intention-Driven Autonomous Agent (COMPLETE)
+
+**Objective:** Connect nova_ai's language understanding with nova_automation's execution
+pipeline so users can express goals in natural language and have NOVA understand, plan,
+execute, explain, and remember them. Add persistence, goal lifecycle management, and a
+bidirectional AI↔Automation bridge.
+
+**Deliverables (Subsystem 1 — Intention Parser):**
+- `intention_parser.rs` — `IntentionParser` with AI + heuristic NL→Goal resolution;
+  `IntentionResult` (Goal/Goals/ClarificationNeeded/Unsupported); 88+ unit tests
+- Heuristic fallback for 14+ goal types; AI tool-calling based resolution
+
+**Deliverables (Subsystem 2 — Goal Registry):**
+- `goal_registry.rs` — SQLite-backed persistence for goals and reports;
+  `GoalRecord`, `ReportRecord`, `GoalFilter`, `GoalRegistryStats`; FTS5 search;
+  auto-purge; 48+ unit tests
+
+**Deliverables (Subsystem 3 — Execution Manager):**
+- `execution_manager.rs` — `ExecutionManager` with full goal lifecycle
+  (submit→resolve→plan→execute→complete/fail/cancel); priority queue with FIFO;
+  `GoalHandle`, `ExecutionStatistics`, `ExecutionQueueConfig`; pause/resume/cancel;
+  polling-based history; 59+ unit tests
+
+**Deliverables (Subsystem 4 — AI Automation Bridge):**
+- `ai_bridge.rs` — Bidirectional bridge between AI engine and automation system;
+  `AiAutomationBridge` with session management; `AutomationDecision` (Execute/Clarify/Error);
+  tool dispatch via `ExecutionManager`; 35+ unit tests
+
+**Deliverables (Subsystem 5 — Feedback Generator):**
+- `feedback_generator.rs` — `FeedbackGenerator` with progress/summary/event-based
+  feedback; `FeedbackMessage`, `FeedbackProgress`, `FeedbackSummary`,
+  `FeedbackConfig`, `FeedbackMetrics`, `FeedbackEvent` (13 variants);
+  plain/markdown/concise/detailed/emoji/timestamp formatting; 53 unit tests
+
+**Exit Criteria:**
+- ✅ `cargo fmt --check` — clean
+- ✅ `cargo check --workspace` — 0 errors, 0 warnings
+- ✅ `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings
+- ✅ `cargo test -p nova_automation feedback_generator::tests` — 53/53 passed
+- ✅ `cargo test -p nova_automation -- --test-threads=1` — 528/529 passed
+  (pre-existing `STATUS_ACCESS_VIOLATION` in `real_executors` only)
+- ✅ No breaking changes to frozen M17-M21 public APIs
+- ✅ No new Cargo dependencies
+
+---
+
+## Future Phases (Post-v0.22.0)
 
 - **v3.x:** Proactive helpfulness (anticipation engine, LG-2)
 - **v4.x:** Linux + macOS shells (LG-3)
@@ -612,4 +658,4 @@ outcomes, and recover from failures adaptively.
 
 ---
 
-*Roadmap version: 1.5. All milestones M1-M20 exit criteria verified.*
+*Roadmap version: 1.6. All milestones M1-M22 exit criteria verified.*

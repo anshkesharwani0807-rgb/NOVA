@@ -1,5 +1,51 @@
 # CHANGELOG
 
+## [0.22.0-m22] - 2026-07-19 — Intention-Driven Autonomous Agent
+
+### Added (M22 Subsystem 1 — Intention Parser)
+- **`intention_parser.rs`** — `IntentionParser` with AI-powered + heuristic natural language
+  to `Goal` resolution; `IntentionResult` enum (Goal/Goals/ClarificationNeeded/Unsupported);
+  88+ unit tests covering all goal patterns, AI resolution, heuristic fallback, ambiguity,
+  compound goals, edge cases.
+
+### Added (M22 Subsystem 2 — Goal Registry)
+- **`goal_registry.rs`** — SQLite-backed persistence for goals and execution reports;
+  `GoalRecord`, `ReportRecord`, `GoalFilter`, `GoalRegistryStats`; FTS5 full-text search;
+  auto-purge with configurable retention; 48+ unit tests (in-memory SQLite).
+
+### Added (M22 Subsystem 3 — Execution Manager)
+- **`execution_manager.rs`** — `ExecutionManager` with full goal lifecycle management:
+  submit/resolve/plan/execute/complete/fail/cancel; priority queue (Immediate/High/Normal/Low)
+  with FIFO ordering; `GoalHandle` for status tracking; `ExecutionStatistics` with
+  peak concurrency tracking; pause/resume/cancel for running and queued entries;
+  history polling with timeout; concurrent submission safety; 59+ unit tests.
+- **Resolved `ExecutionStatus` ambiguity** — unified into single `history::ExecutionStatus` type
+  with all variants; removed duplicate from `execution_manager.rs`; replaced with
+  `pub use crate::history::ExecutionStatus`.
+
+### Added (M22 Subsystem 4 — AI Automation Bridge)
+- **`ai_bridge.rs`** — `AiAutomationBridge` providing bidirectional AI↔Automation communication;
+  `AutomationDecision` (Execute/Clarify/Error); session management with context tracking;
+  tool dispatch through `ExecutionManager`; 35+ unit tests.
+- **Fixed session sharing** — changed `sessions` field from `HashMap<String, AutomationSession>`
+  to `HashMap<String, Arc<RwLock<AutomationSession>>>` for correct concurrent access.
+
+### Added (M22 Subsystem 5 — Feedback Generator)
+- **`feedback_generator.rs`** — `FeedbackGenerator` converting execution results into
+  user-friendly messages; `FeedbackMessage`, `FeedbackProgress`, `FeedbackSummary`,
+  `FeedbackContext`, `FeedbackConfig`, `FeedbackMetrics`, `FeedbackEvent` (13 variants);
+  `FeedbackStyle` (Concise/Normal/Detailed/Emoji/Timestamp/Markdown);
+  `FeedbackLevel` (Debug/Info/Success/Warning/Error); history tracking with max-entries cap;
+  plain text and Markdown formatting; thread-safe concurrent access; 53 unit tests.
+
+### Build
+- All new files wired into `nova_automation` `lib.rs`.
+- `cargo fmt --check` — clean.
+- `cargo check --workspace` — 0 errors, 0 warnings.
+- `cargo clippy --workspace --all-targets -- -D warnings` — zero warnings.
+- 283 new tests across all 5 subsystems; all pass in isolation.
+- Pre-existing `STATUS_ACCESS_VIOLATION` in `real_executors` tests (not caused by M22).
+
 ## [0.21.0-m21] - 2026-07-19 — Closed-Loop Autonomous Execution
 
 ### Added (M21 Subsystem 4 — PlanExecutor)

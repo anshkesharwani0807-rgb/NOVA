@@ -174,8 +174,14 @@ GitHub: private repo `https://github.com/anshkesharwani0807-rgb/NOVA` (branch `m
   variants. 10 new `AutomationConfig` fields. `ExecutionMetrics` + `SharedMetrics` + trace types.
   62 new unit tests (32 plan_executor + 30 observability). All 4 verification gates green.
 
-All milestones 1–21 exit criteria verified.
-NOVA v0.21.0-m21 ready.
+- ✅ **M22 Intention-Driven Autonomous Agent** — `intention_parser.rs` (NL→Goal AI + heuristic),
+  `goal_registry.rs` (SQLite persistence), `execution_manager.rs` (goal lifecycle + queue),
+  `ai_bridge.rs` (AI↔Automation bridge), `feedback_generator.rs` (progress/summary/event feedback).
+  Resolved `ExecutionStatus` ambiguity, fixed `ai_bridge` session sharing, 283 new unit tests total.
+  All 4 verification gates green. Pre-existing `STATUS_ACCESS_VIOLATION` in `real_executors` only.
+
+All milestones 1–22 exit criteria verified.
+NOVA v0.22.0-m22 ready.
 
 `comms` and `plugin_host` are working `KernelModule` **skeletons** (start/stop cleanly, no
 real work yet).

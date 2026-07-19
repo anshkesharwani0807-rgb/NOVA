@@ -1,16 +1,16 @@
-# AI_CONTEXT.md — live state of the NOVA Project (v0.18.5-m15.2)
+# AI_CONTEXT.md — live state of the NOVA Project (v0.22.0-m22)
 
 > Companion to `BRAIN.md` and `SESSION.md`. Read before making any changes.
 
-## Status: M1–M21 COMPLETE ✅
+## Status: M1–M22 COMPLETE ✅
 
-All M1–M20 requirements are implemented and verified. M21 (Closed-Loop Autonomous Execution) is complete:
-- S1 PipelineStep & ExecutionPlanAdapter — 22 unit tests
-- S2 OutcomeVerifier — 30+ unit tests
-- S3 RecoveryOrchestrator — 30+ unit tests
-- S4 PlanExecutor — 32 unit tests
-- S5 Events, Config & Observability — 30 unit tests
-All 4 verification gates green.
+All M1–M21 requirements are implemented and verified. M22 (Intention-Driven Autonomous Agent) is complete:
+- S1 Intention Parser — `intention_parser.rs`: AI + heuristic NL→Goal resolution, 88+ tests
+- S2 Goal Registry — `goal_registry.rs`: SQLite persistence, FTS5 search, 48+ tests
+- S3 Execution Manager — `execution_manager.rs`: goal lifecycle, priority queue, 59+ tests
+- S4 AI Automation Bridge — `ai_bridge.rs`: bidirectional AI↔Automation, 35+ tests
+- S5 Feedback Generator — `feedback_generator.rs`: progress/summary/event feedback, 53 tests
+All 4 verification gates green. Pre-existing `STATUS_ACCESS_VIOLATION` in `real_executors` only.
 
 ---
 

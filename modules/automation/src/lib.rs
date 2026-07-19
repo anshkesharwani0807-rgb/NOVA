@@ -1,4 +1,5 @@
 mod action;
+mod ai_bridge;
 mod condition;
 mod config;
 mod consent_gate;
@@ -6,7 +7,9 @@ mod controller;
 mod error;
 mod events;
 mod execution;
+mod execution_manager;
 mod execution_plan_adapter;
+mod feedback_generator;
 mod goal_registry;
 mod history;
 mod intention_parser;
@@ -25,6 +28,7 @@ mod workflow;
 mod world_state;
 
 pub use action::*;
+pub use ai_bridge::*;
 pub use condition::*;
 pub use config::*;
 pub use consent_gate::*;
@@ -32,8 +36,12 @@ pub use controller::*;
 pub use error::*;
 pub use events::*;
 pub use execution::*;
+#[allow(ambiguous_glob_reexports)]
+pub use execution_manager::*;
 pub use execution_plan_adapter::*;
+pub use feedback_generator::*;
 pub use goal_registry::*;
+#[allow(ambiguous_glob_reexports)]
 pub use history::*;
 pub use intention_parser::*;
 pub use observability::*;

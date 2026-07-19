@@ -379,7 +379,7 @@ impl ExecutionEngine {
             execution_id: execution_id.clone(),
             workflow_id: workflow.id.clone(),
             workflow_name: workflow.name.clone(),
-            status: status.clone(),
+            status,
             started_at: start,
             duration_ms: elapsed,
             steps_succeeded: succeeded,

@@ -2,13 +2,18 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ExecutionStatus {
+    Pending,
+    Queued,
+    Running,
+    Waiting,
+    Paused,
     Completed,
     Failed,
     Partial,
     Cancelled,
-    Running,
+    TimedOut,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
